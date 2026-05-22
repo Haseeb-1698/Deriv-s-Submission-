@@ -2,6 +2,11 @@
 
 A replayable support-triage pipeline that reads customer support tickets from disk, classifies each ticket into a controlled label set, detects urgency, drafts suggested replies, supports human review checkpoints for corrections, and produces a final queue summary for agents.
 
+## Report
+
+- [Interactive HTML report](report/index.html)
+- [Support triage pipeline report](Support_Triage_Pipeline_Report.docx)
+
 ## Features
 
 - ✅ Deterministic ticket normalization before LLM processing
