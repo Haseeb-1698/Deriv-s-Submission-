@@ -1,0 +1,350 @@
+## BUILD
+
+Build a replayable support-triage pipeline that reads customer support tickets from disk, classifies each ticket into a controlled label set, detects urgency, drafts a suggested reply, supports a human review checkpoint for corrections, and produces a final queue summary for agents.
+
+This is not a one-shot prompt demo. The evaluator will run your pipeline from a clean checkout, may replace the input tickets and label configuration with equivalent fixtures, and will verify that deterministic preprocessing happens before LLM use, allowed labels are enforced, human corrections affect downstream outputs, and all generated artifacts can be reproduced.
+
+The task is intentionally practical and scoped for an early-career AI Engineer: combine basic software engineering, LLM integration, structured outputs, validation, and simple workflow design.
+
+---
+
+## INPUT FILES
+
+Your pipeline must read these files from disk:
+
+- `tickets.json`
+- `triage_config.json`
+
+The evaluator may replace these with equivalent files. Your solution must not depend on exact ticket wording, IDs, or the sample expected outputs.
+
+---
+
+## SAMPLE `tickets.json`
+
+```json
+[
+  {
+    "ticket_id": "T-1001",
+    "customer_id": "C-001",
+    "subject": "Charged twice for my deposit",
+    "message": "Hi, I made one deposit this morning but I can see two charges on my bank card. Please help reverse the extra charge.",
+    "channel": "email",
+    "created_at": "2026-05-10T09:15:00Z"
+  },
+  {
+    "ticket_id": "T-1002",
+    "customer_id": "C-002",
+    "subject": "Can’t log in after resetting password",
+    "message": "I reset my password and now the app keeps saying invalid credentials. I need access urgently before market open.",
+    "channel": "chat",
+    "created_at": "2026-05-10T09:18:00Z"
+  },
+  {
+    "ticket_id": "T-1003",
+    "customer_id": "C-003",
+    "subject": "How do I export my transaction history?",
+    "message": "I need a CSV of my transaction history for accounting. Where can I download it from?",
+    "channel": "email",
+    "created_at": "2026-05-10T09:22:00Z"
+  },
+  {
+    "ticket_id": "T-1004",
+    "customer_id": "C-004",
+    "subject": "App crashes when I open portfolio",
+    "message": "The mobile app closes every time I tap the portfolio tab. I already updated to the latest version.",
+    "channel": "web",
+    "created_at": "2026-05-10T09:30:00Z"
+  }
+]
+```
+
+---
+
+## SAMPLE `triage_config.json`
+
+```json
+{
+  "allowed_categories": [
+    "billing_issue",
+    "account_access",
+    "product_how_to",
+    "bug_report",
+    "other"
+  ],
+  "allowed_priorities": [
+    "urgent",
+    "high",
+    "normal",
+    "low"
+  ],
+  "reply_style": {
+    "tone": "clear, polite, concise",
+    "max_words": 80
+  },
+  "routing_rules": {
+    "billing_issue": "payments_queue",
+    "account_access": "trust_and_access_queue",
+    "product_how_to": "general_support_queue",
+    "bug_report": "technical_queue",
+    "other": "manual_review_queue"
+  }
+}
+```
+
+---
+
+## PIPELINE STAGES
+
+Your implementation must enforce these stages in code:
+
+```text
+INIT
+ -> INPUTS_LOADED
+ -> TICKETS_NORMALIZED
+ -> TRIAGE_PREDICTED
+ -> HUMAN_REVIEW_COMPLETE
+ -> FINAL_QUEUE_GENERATED
+ -> VALIDATION_COMPLETE
+ -> RESULTS_FINALISED
+```
+
+The final queue output must not be generated until prediction and human review are complete.
+
+---
+
+## MUST COMPLETE
+
+### 1. Deterministic Ticket Normalization
+
+Read `tickets.json` and create `normalized_tickets.json` before any LLM call.
+
+For each ticket, produce:
+
+```json
+{
+  "ticket_id": "string",
+  "subject": "string",
+  "message": "string",
+  "channel": "string",
+  "created_at": "string",
+  "text_for_model": "string",
+  "char_count": 0
+}
+```
+
+`text_for_model` must be built in deterministic code from the subject and message.
+
+Do not ask the LLM to clean, merge, or normalize the raw input.
+
+---
+
+### 2. Ticket Triage Prediction
+
+Make one LLM call that processes all normalized tickets using the full `triage_config.json`.
+
+For each ticket, output:
+
+```json
+{
+  "ticket_id": "string",
+  "category": "billing_issue",
+  "priority": "urgent",
+  "reason": "string",
+  "suggested_reply": "string",
+  "route_to": "string"
+}
+```
+
+Rules:
+
+- `category` must be one of `allowed_categories`
+- `priority` must be one of `allowed_priorities`
+- `route_to` must match the routing rule for the chosen category
+- `suggested_reply` must follow the configured tone and max word limit
+
+Save output to `triage_predictions.json`.
+
+---
+
+### 3. Human Review Checkpoint
+
+Before generating the final queue, display the predicted category and priority for each ticket in the terminal.
+
+Pause for review with this prompt:
+
+```text
+Enter any overrides as: ticket_id,category,priority
+Press Enter on an empty line when done.
+```
+
+The reviewer must be able to override one or more tickets.
+
+Allowed override values must still respect `triage_config.json`.
+
+Save overrides to `review_overrides.json` with this shape:
+
+```json
+[
+  {
+    "ticket_id": "string",
+    "old_category": "string",
+    "new_category": "string",
+    "old_priority": "string",
+    "new_priority": "string"
+  }
+]
+```
+
+If a category changes, `route_to` must be recomputed from the routing rules.
+
+The final output must use post-review values, not just log them.
+
+---
+
+### 4. Final Agent Queue Output
+
+Generate `final_queue.json` after review.
+
+For each ticket include:
+
+```json
+{
+  "ticket_id": "string",
+  "final_category": "string",
+  "final_priority": "string",
+  "final_route_to": "string",
+  "suggested_reply": "string",
+  "was_overridden": true
+}
+```
+
+Also generate `queue_summary.md` containing:
+
+- total ticket count
+- count by final category
+- count by final priority
+- queue breakdown by destination
+- a short section listing overridden tickets
+
+---
+
+## SHOULD ATTEMPT
+
+### 5. Confidence and Escalation Rules
+
+Add a `confidence` field to each prediction on a 0.0 to 1.0 scale.
+
+Then deterministically flag tickets for manual escalation if either:
+
+- `category == "other"`, or
+- `confidence < 0.60`
+
+Save these to `escalations.json`.
+
+If implemented, the confidence value may come from the model, but escalation logic must be deterministic code.
+
+---
+
+### 6. Validation Script
+
+Include a validation command such as:
+
+```bash
+python validate.py
+```
+
+or:
+
+```bash
+make validate
+```
+
+The validation must check:
+
+- required artifacts exist
+- JSON files are valid
+- inputs were read from disk
+- normalization happened before any LLM call
+- every ticket has exactly one prediction
+- category and priority values are restricted to config values
+- route mappings match the config
+- overrides, if present, are valid and applied in final outputs
+- reply length respects `reply_style.max_words`
+
+---
+
+## STRETCH
+
+### 7. Batch Resilience
+
+If one ticket output is malformed or missing in the LLM response, recover gracefully instead of crashing the whole run.
+
+For example, place that ticket into `other` with `manual_review_queue` and record the issue in a log.
+
+### 8. LLM Call Logging
+
+Write `llm_calls.jsonl` with one JSON object per LLM call:
+
+```json
+{
+  "stage": "string",
+  "timestamp": "ISO-8601 timestamp",
+  "provider": "string",
+  "model": "string",
+  "prompt_hash": "string",
+  "input_artifacts": ["path"],
+  "output_artifact": "path"
+}
+```
+
+---
+
+## REQUIRED ARTIFACTS
+
+Your repository must produce:
+
+- `tickets.json`
+- `triage_config.json`
+- `normalized_tickets.json`
+- `triage_predictions.json`
+- `review_overrides.json`
+- `final_queue.json`
+- `queue_summary.md`
+
+If attempted:
+
+- `escalations.json`
+- `llm_calls.jsonl`
+- validation script output/logs
+
+---
+
+## EXECUTION REQUIREMENTS
+
+The evaluator will run the pipeline from a clean checkout.
+
+Generated artifacts may be deleted before evaluation.
+
+Static precomputed outputs are not sufficient.
+
+Your solution must actually run and regenerate outputs from the input files.
+
+---
+
+## TOOLS
+
+Any programming language may be used.
+
+Any LLM provider or local model may be used.
+
+---
+
+## TECHNICAL CONSTRAINTS
+
+- Read both input files from disk.
+- Do not hardcode sample ticket outputs.
+- Normalization must be deterministic code.
+- Category and priority values must be constrained by config.
+- Routing must be derived from the config, not invented by the model.
+- Human review must be interactive and must affect downstream outputs.
+- Final outputs must be reproducible from a clean run.

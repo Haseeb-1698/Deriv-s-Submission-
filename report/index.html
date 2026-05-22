@@ -1,0 +1,2734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fathom — Phase 1 Review &amp; Phase 2 Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ BASE ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  /* unified green palette — emerald scale */
+  --bg:#05140f; --bg-card:#0c1f18; --bg-card-hover:#112a20; --bg-elevated:#143128;
+  --border:#1d3a2e; --border-hover:#2a5243;
+  --text-primary:#ecfdf5; --text-secondary:#a7b5ac; --text-muted:#6b8478;
+  --accent:#34d399; --accent-dim:rgba(52,211,153,0.10);
+  /* accent family — all greens in a gradient scale */
+  --ok:#34d399;        --ok-dim:rgba(52,211,153,0.12);
+  --info:#6ee7b7;      --info-dim:rgba(110,231,183,0.12);
+  --warn:#a3e635;      --warn-dim:rgba(163,230,53,0.14);
+  --bad:#fb7185;       --bad-dim:rgba(251,113,133,0.10);
+  /* green scale tokens for gradients / charts */
+  --g1:#a7f3d0; --g2:#6ee7b7; --g3:#34d399; --g4:#10b981; --g5:#059669; --g6:#047857; --g7:#065f46;
+  --radius:14px; --radius-sm:10px; --radius-xs:6px;
+  --mono:'JetBrains Mono','Consolas',monospace;
+  --sans:'Inter',-apple-system,sans-serif;
+  --display:'Space Grotesk','Inter',sans-serif;
+  --trans:all .3s cubic-bezier(.4,0,.2,1);
+  --trans-fast:all .15s cubic-bezier(.4,0,.2,1);
+}
+html{font-size:93%;scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text-primary);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(255,255,255,0.15)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* Noise + grid */
+body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+
+/* Floating gradient orbs */
+.orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(100px);opacity:0.12;z-index:0}
+.orb-1{width:600px;height:600px;background:radial-gradient(circle,#34d399 0%,transparent 70%);top:-200px;right:-150px;animation:orbFloat 20s ease-in-out infinite}
+.orb-2{width:500px;height:500px;background:radial-gradient(circle,#10b981 0%,transparent 70%);bottom:200px;left:-200px;animation:orbFloat 25s ease-in-out infinite reverse}
+.orb-3{width:400px;height:400px;background:radial-gradient(circle,#6ee7b7 0%,transparent 70%);top:50%;right:10%;animation:orbFloat 18s ease-in-out infinite 5s}
+body.light-theme .orb{opacity:0.06}
+@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}25%{transform:translate(30px,-40px) scale(1.05)}50%{transform:translate(-20px,30px) scale(0.95)}75%{transform:translate(40px,20px) scale(1.02)}}
+
+/* Scroll-reveal animation */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity 0.7s cubic-bezier(.4,0,.2,1),transform 0.7s cubic-bezier(.4,0,.2,1)}
+.reveal.visible{opacity:1;transform:none}
+
+/* Enhanced card hover with subtle glow */
+.card{transition:var(--trans),box-shadow .4s ease}
+.card:hover{box-shadow:0 0 30px rgba(52,211,153,0.06),0 8px 32px rgba(0,0,0,0.2)}
+body.light-theme .card:hover{box-shadow:0 0 30px rgba(5,150,105,0.06),0 8px 32px rgba(0,0,0,0.06)}
+
+/* Hero glow effect */
+.hero-glow{position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse at center,rgba(52,211,153,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
+body.light-theme .hero-glow{background:radial-gradient(ellipse at center,rgba(5,150,105,0.05) 0%,transparent 70%)}
+
+/* Stat card counter animation */
+.hero-stat-value{transition:color .3s ease}
+.hero-stat:hover .hero-stat-value{color:var(--ok)}
+.hero-stat{transition:var(--trans),transform .3s ease}
+.hero-stat:hover{transform:translateY(-3px);border-color:var(--border-hover)}
+
+/* Section heading underline reveal */
+.sec-heading{position:relative;display:inline-block}
+.sec-heading::after{content:'';position:absolute;bottom:-4px;left:0;width:0;height:2px;background:linear-gradient(90deg,var(--ok),transparent);transition:width .6s cubic-bezier(.4,0,.2,1)}
+.section:hover .sec-heading::after{width:100%}
+
+/* Smooth pill/tag hover */
+.pill{transition:all .2s ease}
+.pill:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}
+
+/* Nav link hover underline animation */
+.nav-link{overflow:hidden}
+.nav-link::before{content:'';position:absolute;bottom:0;left:50%;width:0;height:1px;background:var(--accent);transition:all .3s ease;transform:translateX(-50%)}
+.nav-link:hover::before{width:calc(100% - 32px)}
+
+/* Table row stagger animation */
+.table-wrap tbody tr{opacity:0;animation:fadeInUp .4s ease-out both}
+.table-wrap tbody tr:nth-child(1){animation-delay:.05s}
+.table-wrap tbody tr:nth-child(2){animation-delay:.1s}
+.table-wrap tbody tr:nth-child(3){animation-delay:.15s}
+.table-wrap tbody tr:nth-child(4){animation-delay:.2s}
+.table-wrap tbody tr:nth-child(5){animation-delay:.25s}
+.table-wrap tbody tr:nth-child(6){animation-delay:.3s}
+.table-wrap tbody tr:nth-child(7){animation-delay:.35s}
+.table-wrap tbody tr:nth-child(8){animation-delay:.4s}
+.table-wrap tbody tr:nth-child(9){animation-delay:.45s}
+
+/* Progress bar shimmer */
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+.icon-row div[style*="height:6px"] div{background-size:200px 100%;background-image:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.1) 50%,transparent 100%);animation:shimmer 2s ease-in-out infinite}
+
+/* Light theme toggle */
+body.light-theme{
+  --bg:#f6fbf8; --bg-card:#ffffff; --bg-card-hover:#f0f9f3; --bg-elevated:#e9f6ee;
+  --border:#d9ebe0; --border-hover:#b9d9c5;
+  --text-primary:#052e1f; --text-secondary:#38614f; --text-muted:#7d9c8a;
+  --accent:#059669; --accent-dim:rgba(5,150,105,0.08);
+  --ok:#059669;       --ok-dim:rgba(5,150,105,0.08);
+  --info:#10b981;     --info-dim:rgba(16,185,129,0.10);
+  --warn:#65a30d;     --warn-dim:rgba(101,163,13,0.10);
+  --bad:#be123c;      --bad-dim:rgba(190,18,60,0.06);
+  --g1:#a7f3d0; --g2:#6ee7b7; --g3:#34d399; --g4:#10b981; --g5:#059669; --g6:#047857; --g7:#065f46;
+}
+body.light-theme .grid-bg{background-image:linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px)}
+body.light-theme nav{background:rgba(245,245,245,.88);border-color:rgba(0,0,0,.08)}
+body.light-theme nav.scrolled{background:rgba(245,245,245,.98)}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ NAV ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.8);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border);transition:var(--trans)}
+nav.scrolled{background:rgba(10,10,10,0.95)}
+.nav-inner{max-width:1400px;margin:0 auto;padding:0 40px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;letter-spacing:-.5px;text-decoration:none;color:var(--text-primary)}
+.nav-logo-mark{width:44px;height:44px;object-fit:contain;display:block}
+.nav-logo-text{display:inline-flex;align-items:center}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-link{padding:8px 16px;border-radius:var(--radius-xs);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;transition:var(--trans-fast);letter-spacing:-.2px;position:relative;cursor:pointer;background:none;border:none;font-family:inherit}
+.nav-link:hover{color:var(--text-primary);background:var(--accent-dim)}
+.nav-link.active{color:var(--text-primary)}
+.nav-link.active::after{content:'';position:absolute;bottom:-1px;left:16px;right:16px;height:1px;background:var(--text-primary)}
+.nav-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.btn-ghost{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--accent-dim);color:var(--text-secondary);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:all .2s ease;text-transform:uppercase}
+.btn-ghost:hover{color:var(--text-primary);border-color:var(--border-hover)}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ HERO ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+.hero{padding:140px 40px 60px;max-width:1400px;margin:0 auto;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--border);border-radius:100px;font-size:12px;font-family:var(--mono);color:var(--text-secondary);margin-bottom:28px;animation:fadeInUp .6s ease-out}
+.hero-badge .dot{width:6px;height:6px;background:var(--text-primary);border-radius:50%}
+.hero h1{font-family:var(--display);font-size:clamp(40px,6vw,76px);font-weight:700;letter-spacing:-2.5px;line-height:1.02;margin-bottom:20px;animation:fadeInUp .6s ease-out .1s both;color:var(--text-primary)}
+.hero h1 .gradient{background:linear-gradient(120deg,#ecfdf5 0%,#a7f3d0 25%,#6ee7b7 55%,#34d399 85%,#10b981 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+body.light-theme .hero h1 .gradient{background:linear-gradient(120deg,#065f46 0%,#047857 35%,#059669 65%,#10b981 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p.lede{font-size:17px;color:var(--text-secondary);max-width:680px;line-height:1.7;animation:fadeInUp .6s ease-out .2s both}
+.hero-meta{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:32px;padding-top:28px;border-top:1px solid var(--border);animation:fadeInUp .6s ease-out .25s both}
+.hero-meta-item{display:flex;flex-direction:column;gap:4px;min-width:140px}
+.hero-meta-key{font-size:10px;color:var(--text-muted);font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.hero-meta-val{font-size:14px;color:var(--text-primary);font-weight:500}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:48px;animation:fadeInUp .6s ease-out .3s both}
+.hero-stat{padding:22px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card)}
+.hero-stat-value{font-size:30px;font-weight:900;font-family:var(--mono);letter-spacing:-1.5px}
+.hero-stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-top:6px}
+.hero-stat-sub{font-size:11px;color:var(--text-secondary);margin-top:8px;font-family:var(--mono)}
+@media(max-width:860px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+
+@keyframes fadeInUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ SECTION ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+.section{max-width:1400px;margin:0 auto;padding:70px 40px;position:relative}
+.sec-head{margin-bottom:32px}
+.sec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;font-family:var(--mono);color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-label .tick{display:inline-block;width:28px;height:1px;background:var(--text-muted)}
+.sec-heading{font-family:var(--display);font-size:clamp(28px,3.2vw,44px);font-weight:700;letter-spacing:-1.2px;line-height:1.08;color:var(--text-primary);margin-bottom:16px}
+.sec-sub{font-size:15px;color:var(--text-secondary);max-width:760px;line-height:1.7}
+.section-divider{height:1px;background:linear-gradient(90deg,var(--border),transparent 80%);margin-top:40px}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ CARDS ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:26px;transition:var(--trans);position:relative;overflow:hidden}
+.card:hover{border-color:var(--border-hover);background:var(--bg-card-hover)}
+.card-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:6px}
+.card-h{font-size:18px;font-weight:700;letter-spacing:-.3px;margin-bottom:10px}
+.card-p{font-size:14px;color:var(--text-secondary);line-height:1.65}
+.card-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.card-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:980px){.card-grid-3,.card-grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.card-grid-2,.card-grid-3,.card-grid-4{grid-template-columns:1fr}}
+
+/* Key/value list */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 20px;font-size:14px}
+.kv dt{color:var(--text-muted);font-family:var(--mono);font-size:12px;padding-top:2px}
+.kv dd{color:var(--text-primary)}
+.kv a{color:var(--accent);text-decoration:none;font-weight:600}
+.kv a:hover{color:var(--text-primary);text-decoration:underline;text-decoration-color:var(--accent)}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ TABLE ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+.table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg-card)}
+table.t{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+table.t thead th{padding:14px 18px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card);font-family:var(--mono)}
+table.t tbody td{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text-secondary)}
+body.light-theme table.t tbody td{border-bottom:1px solid rgba(0,0,0,0.05)}
+table.t tbody tr:last-child td{border-bottom:none}
+table.t tbody tr:hover td{background:var(--accent-dim)}
+table.t td.mono{font-family:var(--mono);color:var(--text-primary);font-weight:500}
+table.t td.num{font-family:var(--mono);color:var(--text-primary);font-weight:600;text-align:right}
+table.t td.strong{color:var(--text-primary);font-weight:600}
+table.t td.dim{color:var(--text-muted)}
+
+/* Tag / chip */
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text-secondary);background:var(--accent-dim)}
+.tag.ok{color:var(--text-primary);border-color:var(--border-hover)}
+.tag.warn{color:var(--text-primary);border-color:var(--border-hover);background:var(--accent-dim)}
+.tag.danger{color:var(--text-primary);border-color:var(--text-primary)}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ PROJECT MAP ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+/* Exact step sequence matching project_map.txt */
+.pm-hero{padding:140px 40px 40px;max-width:1400px;margin:0 auto}
+.pm-legend{display:flex;flex-wrap:wrap;gap:22px;padding:16px 22px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);font-size:12px;color:var(--text-secondary);font-family:var(--mono)}
+.pm-legend .lg{display:flex;align-items:center;gap:8px}
+.lg-sw{width:10px;height:10px;border-radius:2px;background:var(--text-muted)}
+.lg-sw.det{background:#555}
+.lg-sw.loc{background:#e5e5e5}
+.lg-sw.ext{background:#888}
+.lg-sw.per{background:#d1d1d1;border:1px solid #666}
+
+.pm-rail{position:relative;margin-top:38px}
+.pm-rail::before{content:'';position:absolute;left:14px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,var(--border) 0%,var(--border) 94%,transparent 100%)}
+
+.step{position:relative;padding-left:56px;margin-bottom:36px}
+.step::before{content:'';position:absolute;left:10px;top:26px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--text-primary);box-shadow:0 0 0 5px var(--bg)}
+.step.local::before{border-color:#fff;background:#fff}
+.step.ext::before{border-color:#888}
+.step.per::before{border-color:#d1d1d1;background:transparent}
+
+.step-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:10px 16px;margin-bottom:14px}
+.step-n{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.18em;text-transform:uppercase}
+.step-t{font-size:22px;font-weight:800;letter-spacing:-.6px;color:var(--text-primary)}
+.step-kind{font-family:var(--mono);font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:3px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.1em}
+.step-desc{font-size:14px;color:var(--text-secondary);margin-bottom:14px;max-width:840px;line-height:1.7}
+.step-body{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);overflow:hidden}
+.step-body-top{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em}
+.step-body-inner{padding:18px 22px}
+.step-body-inner + .step-body-inner{border-top:1px solid var(--border)}
+.sub-label{font-family:var(--mono);font-size:11px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+.sub-list{list-style:none;padding:0;margin:0;font-size:13.5px;color:var(--text-secondary);line-height:1.8}
+.sub-list li{padding-left:18px;position:relative}
+.sub-list li::before{content:'';position:absolute;left:0;top:12px;width:8px;height:1px;background:var(--text-muted)}
+.sub-list code{font-family:var(--mono);font-size:12px;color:var(--text-primary);background:var(--bg-elevated);padding:1px 6px;border-radius:3px;border:1px solid var(--border)}
+.sub-list b{color:var(--text-primary);font-weight:600}
+
+/* branch columns inside a step */
+.branch{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.branch > div{padding:18px 22px}
+.branch > div + div{border-left:1px solid var(--border)}
+@media(max-width:780px){.branch{grid-template-columns:1fr}.branch > div + div{border-left:none;border-top:1px solid var(--border)}}
+
+/* phase block (LLM phases) */
+.phase-block{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);padding:18px 22px;margin:10px 0}
+.phase-block .sub-label{margin-bottom:6px}
+
+/* Pre block (code / contract example) */
+pre.code{font-family:var(--mono);font-size:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;color:var(--text-primary);overflow-x:auto;line-height:1.55;white-space:pre}
+
+/* separator row inside rail */
+.rail-sep{position:relative;padding-left:56px;margin:10px 0 30px}
+.rail-sep::before{content:'';position:absolute;left:14px;top:12px;bottom:-4px;width:1px;background:transparent}
+.rail-sep .l{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);padding:8px 12px;border:1px dashed var(--border);border-radius:4px;display:inline-block}
+
+/* footer */
+footer{max-width:1400px;margin:0 auto;padding:40px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+
+/* view switcher */
+.view{display:none}
+.view.active{display:block;animation:fadeInUp .35s ease-out}
+
+/* anchor offset */
+[id]{scroll-margin-top:84px}
+
+/* table score cell - monochrome treatment */
+.score{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:700;color:var(--text-primary)}
+.score .bar{display:inline-block;width:50px;height:4px;background:var(--accent-dim);border-radius:2px;position:relative;overflow:hidden}
+.score .bar i{position:absolute;inset:0 auto 0 0;background:var(--text-primary);border-radius:2px}
+
+/* muted rule */
+.rule{height:1px;background:var(--border);margin:18px 0}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ ICONS (monochrome) ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+/* Lucide replaces <i data-lucide=".."></i> with <svg> so style the svg directly */
+.ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:18px;height:18px}
+.ico svg,svg.lucide{stroke-width:1.75;width:100%;height:100%;display:block}
+.ico-badge{width:40px;height:40px;border:1px solid var(--border);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ico-badge > svg,.ico-badge > i + svg{width:18px!important;height:18px!important}
+.ico-sm{width:16px;height:16px;color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ico-sm > svg{width:16px!important;height:16px!important}
+.ico-xs{width:13px;height:13px;color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ico-xs > svg{width:13px!important;height:13px!important}
+/* generic lucide sizing fallback */
+svg.lucide{width:18px;height:18px}
+.archbox svg.lucide{width:14px;height:14px}
+.pill svg.lucide{width:12px;height:12px}
+.sec-label .i svg.lucide{width:14px;height:14px}
+.cat-head .ic svg.lucide{width:15px;height:15px}
+.delta svg.lucide{width:12px;height:12px;color:var(--text-muted)}
+.hero-stat-ih svg.lucide{width:16px;height:16px;color:var(--text-secondary)}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ LLM ARCH DIAGRAM ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  
+   NOTE: this diagram keeps its own teal/indigo/amber palette
+   regardless of the page theme (does not consume --ok/--info/--warn). */
+.llm-diagram{
+  --llm-ok:#5eead4;   --llm-ok-dim:rgba(94,234,212,0.12);
+  --llm-info:#818cf8; --llm-info-dim:rgba(129,140,248,0.14);
+  --llm-warn:#fbbf24; --llm-warn-dim:rgba(251,191,36,0.14);
+  --llm-surface:#1a2440; --llm-surface-soft:#121a2e; --llm-border:#222b42; --llm-border-hi:#2e3a56;
+  --llm-text:#f1f5f9; --llm-text-2:#94a3b8; --llm-text-3:#64748b;
+  background:var(--llm-surface-soft);border:1px solid var(--llm-border);border-radius:var(--radius);padding:30px;overflow:hidden;position:relative
+}
+body.light-theme .llm-diagram{
+  --llm-ok:#0d9488;   --llm-ok-dim:rgba(13,148,136,0.10);
+  --llm-info:#4f46e5; --llm-info-dim:rgba(79,70,229,0.10);
+  --llm-warn:#b45309; --llm-warn-dim:rgba(180,83,9,0.10);
+  --llm-surface:#eef2f7; --llm-surface-soft:#ffffff; --llm-border:#e2e8f0; --llm-border-hi:#cbd5e1;
+  --llm-text:#0f172a; --llm-text-2:#475569; --llm-text-3:#94a3b8;
+}
+.llm-diagram svg{width:100%;height:auto;display:block;max-width:1200px;margin:0 auto}
+.llm-diagram .node-box{fill:var(--llm-surface);stroke:var(--llm-border-hi);stroke-width:1.5}
+.llm-diagram .node-box.ok{fill:var(--llm-ok-dim);stroke:var(--llm-ok);stroke-width:1.5}
+.llm-diagram .node-box.info{fill:var(--llm-info-dim);stroke:var(--llm-info);stroke-width:1.5}
+.llm-diagram .node-box.warn{fill:var(--llm-warn-dim);stroke:var(--llm-warn);stroke-width:1.5}
+.llm-diagram .node-box.muted{fill:var(--llm-surface-soft);stroke:var(--llm-border)}
+.llm-diagram .node-t{fill:var(--llm-text);font-family:var(--sans);font-weight:700;font-size:13px}
+.llm-diagram .node-st{fill:var(--llm-text-3);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.llm-diagram .node-p{fill:var(--llm-text-2);font-family:var(--sans);font-size:11px}
+.llm-diagram .node-mono{fill:var(--llm-text);font-family:var(--mono);font-size:11px}
+.llm-diagram .flow-line{stroke:var(--llm-border-hi);stroke-width:1.5;fill:none}
+.llm-diagram .flow-line.ok{stroke:var(--llm-ok);opacity:.85}
+.llm-diagram .flow-line.info{stroke:var(--llm-info);opacity:.85}
+.llm-diagram .flow-line.warn{stroke:var(--llm-warn);opacity:.85}
+.llm-diagram .flow-line.dashed{stroke-dasharray:4 4;opacity:.6}
+.llm-diagram .phase-label{fill:var(--llm-text-3);font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+.llm-diagram .phase-band{fill:none;stroke:var(--llm-border);stroke-width:1;stroke-dasharray:3 3;rx:12;ry:12}
+.llm-diagram .decision{fill:var(--llm-surface-soft);stroke:var(--llm-warn);stroke-width:1.5}
+.llm-diagram .expert-chip{fill:var(--llm-surface);stroke:var(--llm-border-hi);stroke-width:1}
+.llm-diagram .expert-chip.active{fill:var(--llm-ok-dim);stroke:var(--llm-ok)}
+.llm-diagram .expert-t{fill:var(--llm-text);font-family:var(--mono);font-size:9px;font-weight:600}
+
+/* Light-theme contrast overrides for inline-coloured text inside the SVG.
+   The darker hex values keep the same hue identity but meet 4.5:1 on white. */
+body.light-theme .llm-diagram text[style*="#5eead4"]{fill:#0d9488 !important}
+body.light-theme .llm-diagram text[style*="#818cf8"]{fill:#4338ca !important}
+body.light-theme .llm-diagram text[style*="#c7d2fe"]{fill:#4f46e5 !important}
+body.light-theme .llm-diagram text[style*="#fbbf24"]{fill:#b45309 !important}
+body.light-theme .llm-diagram text.node-mono[style*="#c7d2fe"]{fill:#4338ca !important}
+.llm-diagram-legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+.llm-diagram-legend .lg{display:flex;align-items:center;gap:8px}
+.llm-diagram-legend .sw{width:12px;height:12px;border-radius:3px;border:1px solid var(--border-hover)}
+
+/* card with icon header */
+.card-ih{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.card-ih .t{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--mono)}
+
+/* sec label with icon */
+.sec-label .i{display:inline-flex;width:14px;height:14px;color:var(--text-primary)}
+.sec-label .i svg{width:14px;height:14px;stroke-width:2}
+
+/* horizontal arch flow map */
+.archmap{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:6px;padding:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);overflow-x:auto}
+.archbox{min-width:64px;padding:12px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-elevated);display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-secondary);text-align:center;line-height:1.3;transition:var(--trans-fast)}
+.archbox:hover{border-color:var(--border-hover);color:var(--text-primary)}
+.archbox .n{font-size:9px;color:var(--text-muted);letter-spacing:.1em}
+.archbox.fx{border-color:var(--border-hover);color:var(--text-primary);background:var(--bg-card-hover)}
+.archbox .ico svg{width:14px;height:14px}
+@media(max-width:900px){.archmap{grid-template-columns:repeat(7,minmax(0,1fr))}}
+
+/* legend */
+.arch-legend{display:flex;flex-wrap:wrap;gap:20px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+.arch-legend .lg{display:flex;align-items:center;gap:8px}
+.arch-legend .sw{width:10px;height:10px;border-radius:2px;background:var(--text-muted)}
+.arch-legend .sw.d{background:#555}
+.arch-legend .sw.l{background:#e5e5e5}
+.arch-legend .sw.e{background:#888}
+.arch-legend .sw.p{background:#d1d1d1;border:1px solid #666}
+
+/* team row */
+.team-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.team-row:last-child{border-bottom:none}
+.team-av{width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text-primary);flex-shrink:0}
+.team-info{flex:1;min-width:0}
+.team-info .n{font-size:14px;color:var(--text-primary);font-weight:600}
+.team-info .r{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* inline icon row for list */
+.icon-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.icon-row:last-child{border-bottom:none}
+.icon-row .txt{flex:1;min-width:0;font-size:13.5px;line-height:1.6;color:var(--text-secondary)}
+.icon-row .txt b{color:var(--text-primary);font-weight:600}
+
+/* stat icon chip */
+.hero-stat-ih{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.hero-stat-ih .ico{color:var(--text-secondary)}
+.hero-stat-ih .ico svg{width:16px;height:16px}
+
+/* delta arrow inline */
+.delta{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px}
+.delta .from{color:var(--text-muted);text-decoration:line-through;text-decoration-color:var(--text-muted)}
+.delta .to{color:var(--text-primary);font-weight:700}
+.delta svg{width:12px;height:12px;color:var(--text-muted)}
+
+/* callout for phase 2 projected */
+.projected{border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);padding:18px 20px}
+.projected .row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+body.light-theme .projected .row{border-bottom-color:rgba(0,0,0,0.05)}
+.projected .row:last-child{border-bottom:none}
+.projected .row .k{color:var(--text-secondary);display:flex;align-items:center;gap:10px}
+.projected .row .ico svg{width:14px;height:14px}
+
+/* pill badges with subtle color accents */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:100px;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--text-secondary);background:var(--accent-dim)}
+.pill svg{width:12px;height:12px}
+.pill.ok   {color:var(--ok);   border-color:rgba(52,211,153,.28);  background:var(--ok-dim)}
+.pill.info {color:var(--info); border-color:rgba(96,165,250,.28);  background:var(--info-dim)}
+.pill.warn {color:var(--warn); border-color:rgba(245,158,11,.28);  background:var(--warn-dim)}
+.pill.bad  {color:var(--bad);  border-color:rgba(248,113,113,.28); background:var(--bad-dim)}
+
+/* icon-colored accents (used very sparingly, on key icons only) */
+.i-ok   {color:var(--ok)}
+.i-info {color:var(--info)}
+.i-warn {color:var(--warn)}
+.i-bad  {color:var(--bad)}
+
+/* category card topbar */
+.cat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.cat-head .left{display:flex;align-items:center;gap:10px}
+.cat-head .left .ic{width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center}
+.cat-head .left .ic svg{width:15px;height:15px}
+.cat-head .left .tt{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--mono)}
+
+/* Hero two-column layout */
+.hero-layout{display:flex;align-items:flex-start;gap:40px}
+.hero-left{flex:1;min-width:0}
+.hero-card{flex-shrink:0;width:340px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px;margin-top:24px;animation:fadeInUp .6s ease-out .35s both}
+.hero-card-title{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);font-family:var(--mono);display:flex;align-items:center;gap:8px;margin-bottom:14px}
+@media(max-width:980px){.hero-layout{flex-direction:column}.hero-card{width:100%;max-width:520px}}
+
+/* tiny status dot */
+.dot-live{width:6px;height:6px;background:var(--ok);border-radius:50%;display:inline-block;box-shadow:0 0 8px rgba(52,211,153,.5);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ PROJECTED METRIC ROWS ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═  ═ */
+.proj-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.proj-row{display:grid;grid-template-columns:56px 1fr auto;gap:20px;align-items:center;padding:18px 22px;border-bottom:1px solid var(--border);transition:var(--trans-fast)}
+.proj-row:last-child{border-bottom:none}
+.proj-row:hover{background:var(--bg-card-hover)}
+.proj-num{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--ok);letter-spacing:.06em;text-align:center;padding:6px 0;border:1px solid var(--border-hover);border-radius:8px;background:var(--bg-elevated)}
+.proj-body{min-width:0}
+.proj-title{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-primary);letter-spacing:-.2px;line-height:1.3}
+.proj-method{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;letter-spacing:.02em}
+.proj-delta{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.proj-pill{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);min-width:130px;text-align:right}
+.proj-pill .l{font-family:var(--mono);font-size:9px;color:var(--text-muted);letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:3px}
+.proj-pill .v{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--text-primary);line-height:1.3;white-space:nowrap}
+.proj-pill.before .v{color:var(--text-secondary)}
+.proj-pill.after{border-color:rgba(52,211,153,.28);background:var(--ok-dim)}
+.proj-pill.after .v{color:var(--ok)}
+.proj-arrow{color:var(--text-muted);display:flex;align-items:center}
+.proj-arrow svg{width:16px;height:16px}
+.proj-sub{display:block;font-size:11px;font-weight:500;color:var(--text-muted);margin-top:2px;font-family:var(--mono)}
+.proj-wrap-header{padding:14px 22px;border-bottom:1px solid var(--border);background:var(--bg-elevated);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.proj-wrap-header .l{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted)}
+.proj-wrap-header .r{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text-muted)}
+@media(max-width:820px){
+  .proj-row{grid-template-columns:48px 1fr;row-gap:14px}
+  .proj-delta{grid-column:1 / -1;justify-content:space-between}
+  .proj-pill{flex:1;text-align:left}
+  .proj-pill .v{white-space:normal}
+}
+
+/* agent grid for swarm */
+.agent-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.agent{padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-elevated)}
+.agent-name{font-family:var(--mono);font-size:12px;color:var(--text-primary);font-weight:600;margin-bottom:3px}
+.agent-desc{font-size:12.5px;color:var(--text-secondary);line-height:1.55}
+@media(max-width:780px){.agent-grid{grid-template-columns:1fr}}
+
+/* meta ribbon in phases */
+.meta-ribbon{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ●●●●●●●●●●●●●●●●●●●●●● NAV ●●●●●●●●●●●●●●●●●●●●●● -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#/home" class="nav-logo" onclick="nav('home',event)">
+      <img src="main-3.png" alt="Fathom logo" class="nav-logo-mark" />
+      Fathom
+    </a>
+    <div class="nav-links">
+      <a href="#/home"     class="nav-link active" data-view="home"     onclick="nav('home',event)">Overview</a>
+      <a href="#/home#architecture"     class="nav-link">Architecture</a>
+      <a href="#/home#results"          class="nav-link">Results</a>
+      <a href="#/home#limitations"      class="nav-link">Limitations</a>
+      <a href="#/home#phase2"           class="nav-link">Future Work</a>
+      <a href="#/pipeline" class="nav-link"  data-view="pipeline" onclick="nav('pipeline',event)">Project&nbsp;Map</a>
+      <a href="/app/upload" class="nav-link">Upload&nbsp;File</a>
+    </div>
+    <div class="nav-right">
+      <button class="btn-ghost" id="themeToggle" onclick="toggleTheme()"><span id="themeLabel">Light</span></button>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;font-family:var(--mono);color:var(--text-secondary)">
+        <span style="width:6px;height:6px;background:var(--text-primary);border-radius:50%"></span>
+        v1.0&nbsp;·&nbsp;16&nbsp;APR&nbsp;2026
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●
+     HOME VIEW
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●● -->
+<main id="view-home" class="view active">
+
+  <!-- HERO -->
+  <section class="hero" id="overview">
+    <div class="hero-glow"></div>
+    <div class="hero-layout">
+
+      <!-- LEFT -->
+      <div class="hero-left">
+        <div class="hero-badge">
+          <span class="dot-live"></span>
+          <i data-lucide="shield-check" class="ico ico-xs" style="color:var(--ok)"></i>
+          &nbsp;Phase&nbsp;1 complete
+          <span style="color:var(--border-hover);margin:0 6px">·</span>
+          <i data-lucide="rocket" class="ico ico-xs" style="color:var(--info)"></i>
+          &nbsp;Phase&nbsp;2 proposed
+          <span style="color:var(--border-hover);margin:0 6px">·</span>
+          <span>FYP Mid-Review · v1.0</span>
+        </div>
+        <h1>
+          <span class="gradient">LLM-Powered Automated</span><br>
+          Malware Analysis Framework.
+        </h1>
+        <p class="lede">
+          Fathom is a retrieval-augmented malware analysis pipeline that ingests raw sandbox reports
+          (CAPEv2) and produces structured analyst output - MITRE ATT&amp;CK mappings, IOC tables,
+          behavioural narratives, and executive summaries. The current deployment serves
+          Mixtral-8x7B-Instruct-v0.1 through vLLM with LoRA support on a single AMD MI300X VF with a
+          32,768-token context window; Azure enrichment remains conditional, with Kimi primary and
+          GPT fallback when needed. Phase&nbsp;2 still proposes a targeted retraining on
+          Foundation-Sec-8B-Instruct.
+        </p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;animation:fadeInUp .6s ease-out .25s both">
+          <a href="#architecture" class="pill" style="padding:10px 16px;font-size:12px;border-color:var(--text-primary);color:var(--text-primary);background:transparent;text-decoration:none">
+            <i data-lucide="layers" class="ico ico-xs" style="color:var(--text-primary)"></i> Explore architecture
+          </a>
+          <a href="#/pipeline" class="pill" onclick="nav('pipeline',event)" style="padding:10px 16px;font-size:12px;text-decoration:none">
+            <i data-lucide="git-fork" class="ico ico-xs"></i> Full project map
+          </a>
+          <a href="#phase2" class="pill info" style="padding:10px 16px;font-size:12px;text-decoration:none">
+            <i data-lucide="arrow-up-right" class="ico ico-xs"></i> Future work
+          </a>
+        </div>
+      </div>
+
+      <!-- RIGHT team card -->
+      <div class="hero-card">
+        <div class="hero-card-title">
+          <i data-lucide="users" class="ico ico-sm" style="color:var(--text-primary)"></i>
+          Project Team
+        </div>
+        <div class="team-row">
+          <div class="team-av">MH</div>
+          <div class="team-info">
+            <div class="n">Muhammad Haseeb</div>
+            <div class="r">22I-1698 · Team Lead · Backend</div>
+          </div>
+          <i data-lucide="user-check" class="ico ico-sm i-ok"></i>
+        </div>
+        <div class="team-row">
+          <div class="team-av">AH</div>
+          <div class="team-info">
+            <div class="n">Abdul Hadi</div>
+            <div class="r">22I-1646 · Team Member</div>
+          </div>
+        </div>
+        <div class="team-row">
+          <div class="team-av">MA</div>
+          <div class="team-info">
+            <div class="n">Muhammad Ammar</div>
+            <div class="r">22I-1626 · Team Member</div>
+          </div>
+        </div>
+        <div class="rule"></div>
+        <div class="icon-row" style="border-bottom:none;padding:0">
+          <i data-lucide="graduation-cap" class="ico ico-sm i-info" style="margin-top:1px"></i>
+          <div class="txt">
+            <b>Dr. Sana Aurangzeb</b><br>
+            <span style="font-size:11px;font-family:var(--mono);color:var(--text-muted)">Supervisor · FAST-NUCES Islamabad</span>
+          </div>
+        </div>
+        <div class="rule"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase">
+          <span><i data-lucide="calendar" class="ico ico-xs" style="vertical-align:middle;margin-right:5px"></i>16 APR 2026</span>
+          <span><i data-lucide="building-2" class="ico ico-xs" style="vertical-align:middle;margin-right:5px"></i>FAST NUCES ISB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-ih">
+          <i data-lucide="target" class="ico"></i>
+          <span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Knowledge</span>
+        </div>
+        <div class="hero-stat-value" style="color:var(--ok)">88.0<span style="font-size:18px">%</span></div>
+        <div class="hero-stat-label">CyberMetric-500</div>
+        <div class="hero-stat-sub">440 / 500 correct</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-ih">
+          <i data-lucide="crosshair" class="ico"></i>
+          <span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Operational</span>
+        </div>
+        <div class="hero-stat-value" style="color:var(--ok)">0.841</div>
+        <div class="hero-stat-label">Parent-Tech F1 · Real CAPE</div>
+        <div class="hero-stat-sub">Emotet · Formbook · Dridex</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-ih">
+          <i data-lucide="cpu" class="ico"></i>
+          <span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Runtime</span>
+        </div>
+        <div class="hero-stat-value">32<span style="font-size:18px">K</span></div>
+        <div class="hero-stat-label">Context Window</div>
+        <div class="hero-stat-sub">vLLM + LoRA serving</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-ih">
+          <i data-lucide="database" class="ico"></i>
+          <span style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)">Dataset</span>
+        </div>
+        <div class="hero-stat-value">332<span style="font-size:18px">K</span></div>
+        <div class="hero-stat-label">Training Rows</div>
+        <div class="hero-stat-sub">28 sources · Alpaca JSONL</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01 · SUMMARY -->
+  <section class="section reveal" id="summary">
+    <div class="sec-head">
+      <div class="sec-label"><span class="i"><i data-lucide="file-text"></i></span><span class="tick"></span>01 &nbsp;/&nbsp; Executive Summary</div>
+      <h2 class="sec-heading">What Phase&nbsp;1 delivered, and why Phase&nbsp;2 is needed.</h2>
+    </div>
+
+    <div class="card-grid-2">
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge" style="color:var(--ok);border-color:rgba(52,211,153,.28);background:var(--ok-dim)"><i data-lucide="check-circle-2"></i></div>
+          <div>
+            <div class="t">Phase 1 · Feb–Apr 2026</div>
+            <div style="font-size:17px;font-weight:700;letter-spacing:-.3px;margin-top:2px">Working end-to-end pipeline delivered</div>
+          </div>
+        </div>
+        <p class="card-p">
+          The current stack runs Mixtral-8x7B-Instruct-v0.1 behind a vLLM OpenAI-compatible endpoint
+          with LoRA support, a FAISS-indexed MITRE ATT&amp;CK retrieval layer, a Neo4j knowledge graph,
+          and conditional Azure enrichment. Kimi is still the primary external model, with GPT fallback
+          enabled when Kimi is rate-limited or unavailable. Evaluated in a twelve-run benchmark campaign
+          from 2-4 April 2026.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+          <span class="pill ok"><i data-lucide="check"></i> Delivered</span>
+          <span class="pill"><i data-lucide="flask-conical"></i> 12 runs</span>
+          <span class="pill"><i data-lucide="calendar-check"></i> 2–4 Apr 2026</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge" style="color:var(--info);border-color:rgba(96,165,250,.28);background:var(--info-dim)"><i data-lucide="rocket"></i></div>
+          <div>
+            <div class="t">Phase 2 · Proposed</div>
+            <div style="font-size:17px;font-weight:700;letter-spacing:-.3px;margin-top:2px">Retrain on Foundation-Sec-8B-Instruct</div>
+          </div>
+        </div>
+        <p class="card-p">
+          Cisco&rsquo;s Foundation-Sec-8B-Instruct is a Llama-3.1-8B variant continually-pretrained
+          on 5.1&nbsp;B cybersecurity tokens and RLHF-aligned. The Phase&nbsp;2 design preserves the
+          entire Phase&nbsp;1 architecture and swaps only the base weights and chat template —  
+          targeting the capability and safety gaps identified in benchmarking.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:14px">
+          <span class="pill"><i data-lucide="cpu"></i> 1x MI300X VF</span>
+          <span class="pill"><i data-lucide="badge-dollar-sign"></i> USD 75–100</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+  </section>
+
+  <!-- 02 · ARCHITECTURE -->
+  <section class="section reveal" id="architecture">
+    <div class="sec-head">
+      <div class="sec-label"><span class="i"><i data-lucide="layers"></i></span><span class="tick"></span>02 &nbsp;/&nbsp; System Architecture</div>
+      <h2 class="sec-heading">Thirteen-stage pipeline, three LLM inference phases.</h2>
+      <p class="sec-sub">
+        Deterministic extraction and retrieval frame three LLM phases: a Fathom first-pass
+        (local vLLM-served Mixtral + LoRA), a conditional Azure enrichment swarm, and an Azure
+        synthesis stage with GPT fallback if Kimi is unavailable. The full step-by-step pipeline
+        is on the <a href="#/pipeline" onclick="nav('pipeline',event)" style="color:var(--text-primary);border-bottom:1px solid var(--border-hover)">Project Map</a>.
+      </p>
+    </div>
+
+    <!-- Horizontal flow map -->
+    <div class="archmap" style="margin-bottom:18px">
+      <div class="archbox"><div class="ico"><i data-lucide="log-in"></i></div><div class="n">01</div><div>Auth</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="file-search"></i></div><div class="n">02</div><div>Extract</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="database"></i></div><div class="n">03</div><div>Store</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="zap"></i></div><div class="n">04</div><div>Cache</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="compass"></i></div><div class="n">05</div><div>Route</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="puzzle"></i></div><div class="n">06</div><div>Adapter</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="file-code"></i></div><div class="n">07</div><div>Prompt</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="shield"></i></div><div class="n">08</div><div>Sanitise</div></div>
+      <div class="archbox fx" style="color:var(--ok);border-color:rgba(52,211,153,.30)"><div class="ico i-ok"><i data-lucide="brain"></i></div><div class="n">09</div><div>Fathom</div></div>
+      <div class="archbox fx" style="color:var(--info);border-color:rgba(96,165,250,.30)"><div class="ico i-info"><i data-lucide="users"></i></div><div class="n">10</div><div>Swarm</div></div>
+      <div class="archbox fx" style="color:var(--info);border-color:rgba(96,165,250,.30)"><div class="ico i-info"><i data-lucide="combine"></i></div><div class="n">11</div><div>Synth</div></div>
+      <div class="archbox"><div class="ico"><i data-lucide="check-check"></i></div><div class="n">12</div><div>Validate</div></div>
+      <div class="archbox fx" style="color:var(--warn);border-color:rgba(245,158,11,.30)"><div class="ico i-warn"><i data-lucide="radio-tower"></i></div><div class="n">13</div><div>SSE</div></div>
+    </div>
+    <div class="arch-legend" style="margin-bottom:24px">
+      <div class="lg"><span class="sw d"></span>Deterministic (no LLM)</div>
+      <div class="lg"><span class="sw" style="background:var(--ok)"></span>Fathom local inference</div>
+      <div class="lg"><span class="sw" style="background:var(--info)"></span>Azure enrichment / synthesis</div>
+      <div class="lg"><span class="sw" style="background:var(--warn)"></span>Persistence &amp; delivery</div>
+    </div>
+
+    <div class="card-grid-2" style="margin-bottom:16px">
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge"><i data-lucide="cpu"></i></div>
+          <div>
+            <div class="t">Base model</div>
+            <div style="font-size:17px;font-weight:700;letter-spacing:-.3px;margin-top:2px">Mixtral-8×7B-Instruct-v0.1</div>
+          </div>
+        </div>
+        <dl class="kv" style="margin-top:6px">
+          <dt>Active params</dt><dd>13B of 46.7B (2 of 8 experts / token)</dd>
+          <dt>Fine-tune</dt><dd>QLoRA 4-bit · rank 32 (64 for unified) · α 64 · dropout 0.05</dd>
+          <dt>Serving</dt><dd>vLLM + LoRA modules via systemd on the host</dd>
+          <dt>Hardware</dt><dd>1x AMD MI300X VF, 205.8&nbsp;GB VRAM, ROCm 7.0, full bf16</dd>
+          <dt>Context</dt><dd>32,768 tokens</dd>
+          <dt>vLLM config</dt><dd>gpu-memory-utilization 0.90, max-num-seqs 2, max-lora-rank 32</dd>
+          <dt>Hugging Face repo</dt><dd><a href="https://huggingface.co/umer07/fathom-mixtral" target="_blank" rel="noopener">umer07/fathom-mixtral</a></dd>
+          <dt>Cost per hour</dt><dd>$1.99</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge"><i data-lucide="server"></i></div>
+          <div>
+            <div class="t">Supporting infrastructure</div>
+            <div style="font-size:17px;font-weight:700;letter-spacing:-.3px;margin-top:2px">Storage · retrieval · serving · observability</div>
+          </div>
+        </div>
+        <div style="margin-top:4px">
+          <div class="icon-row"><i data-lucide="database" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>MinIO</b> — S3-compatible object store · samples / CAPE / reports (SHA-256 keyed)</div></div>
+          <div class="icon-row"><i data-lucide="git-branch" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>Neo4j</b> — Sample → Process → IOC → Technique graph + chat history</div></div>
+          <div class="icon-row"><i data-lucide="sigma" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>FAISS</b> — attack_kb (768-d) · sample_kb · chat_kb semantic cache</div></div>
+          <div class="icon-row"><i data-lucide="server-cog" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>vLLM + FastAPI</b> — OpenAI-compatible API · SSE streaming</div></div>
+          <div class="icon-row"><i data-lucide="activity" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>Langfuse + structlog</b> — per-call traces, tokens, latency</div></div>
+          <div class="icon-row"><i data-lucide="layout-dashboard" class="ico ico-sm" style="color:var(--text-primary);margin-top:1px"></i><div class="txt"><b>Next.js 16 + React 19</b> - upload, stream, markdown render</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Adapter inventory -->
+    <div class="table-wrap" style="margin-top:16px">
+      <table class="t">
+        <thead>
+          <tr>
+            <th style="width:28%">Adapter</th>
+            <th>Primary domain</th>
+            <th style="width:18%;text-align:right">Training rows</th>
+            <th style="width:18%;text-align:right">CyberMetric-80</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">unified-v2</td><td>Cross-domain base / routing fallback</td><td class="num">123,912</td><td class="dim num">—  </td></tr>
+          <tr><td class="mono">expert-e1-static</td><td>PE static analysis (EMBER2024, PS obfuscation)</td><td class="num">11,000</td><td class="num">83.75%</td></tr>
+          <tr><td class="mono">expert-e2-dynamic</td><td>Sandbox API sequences, CAPE reports</td><td class="num">11,594</td><td class="num">85.00%</td></tr>
+          <tr><td class="mono">expert-e3-network</td><td>Network traffic, intrusion detection</td><td class="num">19,991</td><td class="num">90.00%</td></tr>
+          <tr><td class="mono">expert-e4-forensics</td><td>Memory / registry / artefact forensics</td><td class="num">19,183</td><td class="num">90.00%</td></tr>
+          <tr><td class="mono">expert-e5-threatintel</td><td>OTX, MalwareBazaar, MISP pulses</td><td class="num">13,159</td><td class="num">81.25%</td></tr>
+          <tr><td class="mono">expert-e6-detection</td><td>Sigma rule authoring, detection eng.</td><td class="num">19,986</td><td class="num">88.75%</td></tr>
+          <tr><td class="mono">expert-e7-reports</td><td>Malware report generation</td><td class="num">94,063</td><td class="num">88.75%</td></tr>
+          <tr><td class="mono">expert-e8-analyst</td><td>Analyst QA, SOC playbook, CTI reasoning</td><td class="num">19,504</td><td class="num strong">91.25%</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 02b · LLM architecture diagram -->
+    <div style="margin-top:40px">
+      <div class="sec-head" style="margin-bottom:20px">
+        <div class="sec-label"><span class="i"><i data-lucide="network"></i></span><span class="tick"></span>02b &nbsp;/&nbsp; LLM Inference Architecture</div>
+        <h3 style="font-size:clamp(22px,2.4vw,32px);font-weight:900;letter-spacing:-1px;line-height:1.1;color:var(--text-primary);margin-bottom:10px">How evidence becomes a report.</h3>
+        <p class="sec-sub">
+          The LLM core: deterministic prompt assembly on the left, three-phase inference in the middle
+          (Fathom local → conditional Kimi swarm → synthesis), guardrails and delivery on the right.
+        </p>
+      </div>
+
+      <div class="llm-diagram">
+        <svg viewBox="0 0 1240 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fathom LLM inference architecture diagram">
+          <defs>
+            <marker id="arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+            <marker id="arr-ok" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/>
+            </marker>
+            <marker id="arr-info" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/>
+            </marker>
+            <marker id="arr-warn" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/>
+            </marker>
+          </defs>
+
+          <!-- ●● PHASE BANDS (background) ●● -->
+          <rect class="phase-band" x="20"   y="70"  width="300" height="380"/>
+          <rect class="phase-band" x="350"  y="70"  width="440" height="380"/>
+          <rect class="phase-band" x="820"  y="70"  width="400" height="380"/>
+
+          <text class="phase-label" x="170"  y="55" text-anchor="middle">Context Assembly · deterministic</text>
+          <text class="phase-label" x="570"  y="55" text-anchor="middle">LLM Inference · three phases</text>
+          <text class="phase-label" x="1020" y="55" text-anchor="middle">Validation &amp; Delivery</text>
+
+          <!-- ●● LEFT: Context Assembly ●● -->
+          <g>
+            <rect class="node-box" x="40" y="100" width="260" height="90" rx="12"/>
+            <text class="node-st" x="58" y="122">Input · deterministic</text>
+            <text class="node-t"  x="58" y="144" style="font-size:15px">Evidence Brief + RAG</text>
+            <text class="node-p"  x="58" y="162">CAPE extraction · FAISS ATT&amp;CK</text>
+            <text class="node-p"  x="58" y="178">Neo4j graph · sample similarity</text>
+          </g>
+
+          <g>
+            <rect class="node-box muted" x="40" y="220" width="260" height="70" rx="12"/>
+            <text class="node-st" x="58" y="242">Step 06 + 07</text>
+            <text class="node-t"  x="58" y="264" style="font-size:15px">Prompt &amp; Sanitise</text>
+            <text class="node-p"  x="58" y="282">[INST]...[/INST] format · injection filter</text>
+          </g>
+
+          <!-- flow: Input -> Prompt -->
+          <path class="flow-line" d="M170 190 L 170 220" marker-end="url(#arr)" stroke-width="2"/>
+
+          <!-- ●● CENTER: LLM phases ●● -->
+          <!-- Phase A Fathom -->
+          <g>
+            <rect class="node-box ok" x="370" y="100" width="400" height="160" rx="12"/>
+            <text class="node-st" x="388" y="122" style="fill:#5eead4">Phase A · LOCAL MODEL</text>
+            <text class="node-t"  x="388" y="144" style="font-size:16px">Fathom — Mixtral-8×7B + LoRA</text>
+            <text class="node-p"  x="388" y="162">Domain router → active expert adapter</text>
+
+            <!-- 8 expert chips in one compact row, with E2 highlighted -->
+            <g>
+              <rect class="expert-chip" x="388" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="409" y="194" text-anchor="middle">E1</text>
+              <rect class="expert-chip active" x="435" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="456" y="194" text-anchor="middle" style="fill:#5eead4">E2</text>
+              <rect class="expert-chip" x="482" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="503" y="194" text-anchor="middle">E3</text>
+              <rect class="expert-chip" x="529" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="550" y="194" text-anchor="middle">E4</text>
+              <rect class="expert-chip" x="576" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="597" y="194" text-anchor="middle">E5</text>
+              <rect class="expert-chip" x="623" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="644" y="194" text-anchor="middle">E6</text>
+              <rect class="expert-chip" x="670" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="691" y="194" text-anchor="middle">E7</text>
+              <rect class="expert-chip" x="717" y="180" width="42" height="22" rx="4"/>
+              <text class="expert-t" x="738" y="194" text-anchor="middle">E8</text>
+            </g>
+            <text class="node-p" x="388" y="222" style="font-size:11px">First-pass analysis · emits ENRICHMENT GAPS contract</text>
+            <text class="node-p" x="388" y="240" style="font-size:11px">bf16 · 8K ctx · fallback → unified-v2 when expert unavailable</text>
+          </g>
+
+          <!-- Phase B Intel Agents -->
+          <g>
+            <rect class="node-box info" x="370" y="290" width="400" height="150" rx="12"/>
+            <text class="node-st" x="388" y="312" style="fill:#818cf8">Phase B · INTEL AGENTS · conditional</text>
+            <text class="node-t"  x="388" y="334" style="font-size:16px">Four parallel enrichment agents</text>
+
+            <g>
+              <rect class="expert-chip" x="388" y="350" width="180" height="34" rx="6"/>
+              <text class="node-mono" x="398" y="368" style="font-size:10px;fill:#c7d2fe">threat intel</text>
+              <text class="node-p" x="398" y="379" style="font-size:9px">actors · campaigns</text>
+
+              <rect class="expert-chip" x="580" y="350" width="180" height="34" rx="6"/>
+              <text class="node-mono" x="590" y="368" style="font-size:10px;fill:#c7d2fe">attack enrichment</text>
+              <text class="node-p" x="590" y="379" style="font-size:9px">sub-techniques · mitigations</text>
+
+              <rect class="expert-chip" x="388" y="390" width="180" height="34" rx="6"/>
+              <text class="node-mono" x="398" y="408" style="font-size:10px;fill:#c7d2fe">ioc correlation</text>
+              <text class="node-p" x="398" y="419" style="font-size:9px">reputation · passive DNS</text>
+
+              <rect class="expert-chip" x="580" y="390" width="180" height="34" rx="6"/>
+              <text class="node-mono" x="590" y="408" style="font-size:10px;fill:#c7d2fe">context enrichment</text>
+              <text class="node-p" x="590" y="419" style="font-size:9px">family · infection chain</text>
+            </g>
+          </g>
+
+          <!-- ●● RIGHT: Synthesis + output ●● -->
+          <g>
+            <rect class="node-box info" x="840" y="100" width="360" height="160" rx="12"/>
+            <text class="node-st" x="858" y="122" style="fill:#818cf8">Phase C · SYNTHESIS</text>
+            <text class="node-t"  x="858" y="144" style="font-size:16px">Consolidation Engine</text>
+            <text class="node-p"  x="858" y="162">Merges evidence + Fathom + agents into final report</text>
+
+            <g>
+              <rect class="expert-chip" x="858" y="180" width="160" height="22" rx="4"/>
+              <text class="expert-t" x="938" y="195" text-anchor="middle">Executive Summary</text>
+              <rect class="expert-chip" x="1026" y="180" width="160" height="22" rx="4"/>
+              <text class="expert-t" x="1106" y="195" text-anchor="middle">MITRE ATT&amp;CK</text>
+
+              <rect class="expert-chip" x="858" y="210" width="160" height="22" rx="4"/>
+              <text class="expert-t" x="938" y="225" text-anchor="middle">IOC Tables</text>
+              <rect class="expert-chip" x="1026" y="210" width="160" height="22" rx="4"/>
+              <text class="expert-t" x="1106" y="225" text-anchor="middle">Threat Assessment</text>
+            </g>
+            <text class="node-p" x="858" y="250" style="font-size:11px">streamed in 180-char SSE chunks</text>
+          </g>
+
+          <g>
+            <rect class="node-box" x="840" y="290" width="360" height="70" rx="12"/>
+            <text class="node-st" x="858" y="312">Step 11 · guardrails</text>
+            <text class="node-t"  x="858" y="334" style="font-size:15px">Output Validation</text>
+            <text class="node-p"  x="858" y="352">hallucination · repetition · section checks</text>
+          </g>
+
+          <g>
+            <rect class="node-box warn" x="840" y="380" width="360" height="60" rx="12"/>
+            <text class="node-st" x="858" y="402" style="fill:#fbbf24">Step 13 · streaming</text>
+            <text class="node-t"  x="858" y="424" style="font-size:15px">SSE Delivery → Dashboard</text>
+          </g>
+
+          <!-- ●● MAJOR ARROWS (only 5 primary connections) ●● -->
+          <!-- 1. Prompt → Fathom -->
+          <path class="flow-line ok" d="M300 255 L 370 180" marker-end="url(#arr-ok)" stroke-width="2.5"/>
+          <!-- 2. Fathom → Intel Agents -->
+          <path class="flow-line info" d="M570 260 L 570 290" marker-end="url(#arr-info)" stroke-width="2.5"/>
+          <!-- 3. Fathom → Synthesis (direct path when no enrichment) -->
+          <path class="flow-line ok dashed" d="M770 170 L 840 170" marker-end="url(#arr-ok)" stroke-width="2"/>
+          <text class="node-mono" x="780" y="160" style="font-size:9px;fill:var(--text-muted)">no gaps</text>
+          <!-- 4. Intel Agents → Synthesis -->
+          <path class="flow-line info" d="M770 365 Q 830 365 830 180 L 840 180" marker-end="url(#arr-info)" stroke-width="2.5"/>
+          <!-- 5. Synthesis → Validation → SSE -->
+          <path class="flow-line" d="M1020 260 L 1020 290" marker-end="url(#arr)" stroke-width="2.5"/>
+          <path class="flow-line warn" d="M1020 360 L 1020 380" marker-end="url(#arr-warn)" stroke-width="2.5"/>
+
+          <!-- Observability footer band -->
+          <g>
+            <rect class="node-box muted" x="40" y="465" width="1160" height="50" rx="10"/>
+            <text class="node-st" x="58" y="484">Cross-cutting observability</text>
+            <text class="node-p"  x="58" y="503" style="font-size:11px">Langfuse traces &nbsp;·&nbsp; TokenUsageTracker &nbsp;·&nbsp; structlog audit &nbsp;·&nbsp; slowapi rate limit &nbsp;—  &nbsp; instrumented across every LLM call</text>
+          </g>
+        </svg>
+
+        <div class="llm-diagram-legend">
+          <div class="lg"><span class="sw" style="background:rgba(94,234,212,0.12);border-color:#5eead4"></span>Local inference — Fathom (Mixtral + LoRA)</div>
+          <div class="lg"><span class="sw" style="background:rgba(129,140,248,0.14);border-color:#818cf8"></span>Intel agents — enrichment &amp; synthesis</div>
+          <div class="lg"><span class="sw" style="background:rgba(251,191,36,0.14);border-color:#fbbf24"></span>Streaming delivery</div>
+          <div class="lg"><span class="sw"></span>Deterministic / no LLM</div>
+          <div class="lg" style="margin-left:auto"><span style="display:inline-block;width:20px;border-top:1.5px dashed #64748b;vertical-align:middle;margin-right:4px"></span>Conditional / async path</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02c · Backend Architecture Diagram -->
+    <div style="margin-top:40px">
+      <div class="sec-head" style="margin-bottom:20px">
+        <div class="sec-label"><span class="i"><i data-lucide="server"></i></span><span class="tick"></span>02c &nbsp;/&nbsp; Backend Architecture</div>
+        <h3 style="font-size:clamp(22px,2.4vw,32px);font-weight:900;letter-spacing:-1px;line-height:1.1;color:var(--text-primary);margin-bottom:10px">How the system is deployed and connected.</h3>
+        <p class="sec-sub">
+          vLLM runs on the host via systemd; backend, dashboard, Neo4j, and MinIO run as Docker containers.
+          The backend is a FastAPI app that routes requests through evidence extraction, caching, inference, and persistence layers.
+        </p>
+      </div>
+
+      <div class="llm-diagram">
+        <svg viewBox="0 0 1240 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fathom backend architecture diagram">
+          <defs>
+            <marker id="b-arr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+            </marker>
+            <marker id="b-arr-ok" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/>
+            </marker>
+            <marker id="b-arr-info" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/>
+            </marker>
+            <marker id="b-arr-warn" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/>
+            </marker>
+          </defs>
+
+          <!-- ●● REGION BANDS ●● -->
+          <!-- Host system band -->
+          <rect x="20" y="20" width="1200" height="100" rx="14" fill="none" stroke="var(--llm-border)" stroke-width="1" stroke-dasharray="5 5"/>
+          <text class="phase-label" x="40" y="42">Host System · AMD MI300X · systemd</text>
+
+          <!-- Docker band -->
+          <rect x="20" y="140" width="1200" height="600" rx="14" fill="none" stroke="var(--llm-border)" stroke-width="1" stroke-dasharray="5 5"/>
+          <text class="phase-label" x="40" y="162">Docker Compose · 4 containers + init</text>
+
+          <!-- ●● HOST: vLLM ●● -->
+          <g>
+            <rect class="node-box ok" x="40" y="52" width="340" height="56" rx="10"/>
+            <text class="node-st" x="58" y="72" style="fill:#5eead4">systemd · fathom-vllm.service</text>
+            <text class="node-t" x="58" y="92">vLLM · Mixtral-8×7B + LoRA</text>
+          </g>
+          <g>
+            <rect class="node-box muted" x="400" y="52" width="220" height="56" rx="10"/>
+            <text class="node-st" x="418" y="72">endpoint</text>
+            <text class="node-mono" x="418" y="92">127.0.0.1:8000</text>
+          </g>
+          <g>
+            <rect class="node-box muted" x="640" y="52" width="280" height="56" rx="10"/>
+            <text class="node-st" x="658" y="72">model config</text>
+            <text class="node-p" x="658" y="92">model: fathom-base · ctx: 32768 · bf16</text>
+          </g>
+
+          <!-- arrow vLLM endpoint → label -->
+          <path class="flow-line ok" d="M380 80 L400 80" marker-end="url(#b-arr-ok)" stroke-width="2"/>
+
+          <!-- ●● DOCKER: Frontend (dashboard) ●● -->
+          <g>
+            <rect x="40" y="180" width="200" height="120" rx="10" fill="rgba(94,234,212,0.08)" stroke="#5eead4" stroke-width="1.5"/>
+            <rect x="180" y="282" width="52" height="16" rx="3" fill="#5eead4" opacity="0.9"/>
+            <text x="206" y="293" text-anchor="middle" style="font-family:var(--mono);font-size:8px;font-weight:700;fill:#05140f;letter-spacing:.08em">DOCKER</text>
+            <text class="node-st" x="58" y="200" style="fill:#5eead4">fathom-dashboard · :3000</text>
+            <text class="node-t" x="58" y="222">Next.js 16</text>
+            <text class="node-p" x="58" y="242">Upload page</text>
+            <text class="node-p" x="58" y="256">Analysis page (SSE)</text>
+            <text class="node-p" x="58" y="270">Report · Graph · Chat</text>
+            <text class="node-p" x="58" y="288" style="font-size:10px;fill:var(--llm-text-3)">localStorage persistence</text>
+          </g>
+
+          <!-- ●● DOCKER: FastAPI Backend ●● -->
+          <g>
+            <rect class="node-box ok" x="280" y="180" width="420" height="240" rx="12"/>
+            <rect x="640" y="183" width="52" height="16" rx="3" fill="#5eead4" opacity="0.9"/>
+            <text x="666" y="194" text-anchor="middle" style="font-family:var(--mono);font-size:8px;font-weight:700;fill:#05140f;letter-spacing:.08em">DOCKER</text>
+            <text class="node-st" x="298" y="200" style="fill:#5eead4">fathom-backend · :7860</text>
+            <text class="node-t" x="298" y="222" style="font-size:16px">FastAPI Backend</text>
+            <text class="node-p" x="298" y="240">main.py → routers at /api · health at /health</text>
+
+            <!-- Cross-cutting badges row -->
+            <g>
+              <rect class="expert-chip" x="298" y="252" width="72" height="20" rx="4"/>
+              <text class="expert-t" x="334" y="265" text-anchor="middle">Auth</text>
+              <rect class="expert-chip" x="376" y="252" width="82" height="20" rx="4"/>
+              <text class="expert-t" x="417" y="265" text-anchor="middle">Rate Limit</text>
+              <rect class="expert-chip" x="464" y="252" width="62" height="20" rx="4"/>
+              <text class="expert-t" x="495" y="265" text-anchor="middle">CORS</text>
+              <rect class="expert-chip" x="532" y="252" width="78" height="20" rx="4"/>
+              <text class="expert-t" x="571" y="265" text-anchor="middle">Metrics</text>
+              <rect class="expert-chip" x="616" y="252" width="72" height="20" rx="4"/>
+              <text class="expert-t" x="652" y="265" text-anchor="middle">HUD</text>
+            </g>
+
+            <!-- API endpoint groups -->
+            <g>
+              <rect class="expert-chip active" x="298" y="284" width="130" height="28" rx="5"/>
+              <text class="node-mono" x="308" y="298" style="font-size:10px;fill:#5eead4">/api/upload</text>
+              <text class="node-p" x="308" y="308" style="font-size:8px">CAPE · PE · KSPN</text>
+
+              <rect class="expert-chip active" x="434" y="284" width="130" height="28" rx="5"/>
+              <text class="node-mono" x="444" y="298" style="font-size:10px;fill:#5eead4">/api/analyze/stream</text>
+              <text class="node-p" x="444" y="308" style="font-size:8px">SSE · 3-phase pipeline</text>
+
+              <rect class="expert-chip" x="570" y="284" width="120" height="28" rx="5"/>
+              <text class="node-mono" x="580" y="298" style="font-size:10px">/api/report/*</text>
+              <text class="node-p" x="580" y="308" style="font-size:8px">generate · HTML</text>
+            </g>
+
+            <g>
+              <rect class="expert-chip" x="298" y="320" width="130" height="28" rx="5"/>
+              <text class="node-mono" x="308" y="334" style="font-size:10px">/api/chat/stream</text>
+              <text class="node-p" x="308" y="344" style="font-size:8px">Q&amp;A · cache · history</text>
+
+              <rect class="expert-chip" x="434" y="320" width="130" height="28" rx="5"/>
+              <text class="node-mono" x="444" y="334" style="font-size:10px">/api/graph</text>
+              <text class="node-p" x="444" y="344" style="font-size:8px">Cypher · predefined</text>
+
+              <rect class="expert-chip" x="570" y="320" width="120" height="28" rx="5"/>
+              <text class="node-mono" x="580" y="334" style="font-size:10px">/api/similar</text>
+              <text class="node-p" x="580" y="344" style="font-size:8px">FAISS · Neo4j</text>
+            </g>
+
+            <!-- Internal layers -->
+            <text class="node-st" x="298" y="370">Internal layers</text>
+            <g>
+              <rect class="expert-chip" x="298" y="378" width="100" height="20" rx="4"/>
+              <text class="expert-t" x="348" y="391" text-anchor="middle">Evidence</text>
+              <rect class="expert-chip" x="404" y="378" width="100" height="20" rx="4"/>
+              <text class="expert-t" x="454" y="391" text-anchor="middle">Guardrails</text>
+              <rect class="expert-chip" x="510" y="378" width="100" height="20" rx="4"/>
+              <text class="expert-t" x="560" y="391" text-anchor="middle">Orchestrator</text>
+              <rect class="expert-chip" x="616" y="378" width="72" height="20" rx="4"/>
+              <text class="expert-t" x="652" y="391" text-anchor="middle">Audit</text>
+            </g>
+          </g>
+
+          <!-- ●● In-memory evidence store ●● -->
+          <g>
+            <rect class="node-box warn" x="280" y="438" width="200" height="48" rx="10"/>
+            <text class="node-st" x="298" y="458" style="fill:#fbbf24">in-memory · volatile</text>
+            <text class="node-t" x="298" y="476" style="font-size:13px">_evidence_store</text>
+          </g>
+
+          <!-- ●● Azure enrichment ●● -->
+          <g>
+            <rect class="node-box info" x="500" y="438" width="200" height="48" rx="10"/>
+            <text class="node-st" x="518" y="458" style="fill:#818cf8">Azure OpenAI · conditional</text>
+            <text class="node-t" x="518" y="476" style="font-size:13px">Kimi-K2.5 Swarm</text>
+          </g>
+
+          <!-- ●● DOCKER: Neo4j ●● -->
+          <g>
+            <rect x="740" y="180" width="220" height="130" rx="10" fill="rgba(129,140,248,0.10)" stroke="#818cf8" stroke-width="1.5"/>
+            <rect x="900" y="183" width="52" height="16" rx="3" fill="#818cf8" opacity="0.9"/>
+            <text x="926" y="194" text-anchor="middle" style="font-family:var(--mono);font-size:8px;font-weight:700;fill:#05140f;letter-spacing:.08em">DOCKER</text>
+            <text class="node-st" x="758" y="200" style="fill:#818cf8">fathom-neo4j · :7687</text>
+            <text class="node-t" x="758" y="222">Neo4j</text>
+            <text class="node-p" x="758" y="242">Sample → Process graph</text>
+            <text class="node-p" x="758" y="256">IOC · Technique · Behavior</text>
+            <text class="node-p" x="758" y="270">NetworkConn relationships</text>
+            <text class="node-p" x="758" y="288" style="font-size:10px;fill:var(--llm-text-3)">Chat session history</text>
+            <text class="node-p" x="758" y="300" style="font-size:10px;fill:var(--llm-text-3)">vol: fathom_neo4j_data</text>
+          </g>
+
+          <!-- ●● DOCKER: MinIO ●● -->
+          <g>
+            <rect x="740" y="330" width="220" height="110" rx="10" fill="rgba(251,191,36,0.10)" stroke="#fbbf24" stroke-width="1.5"/>
+            <rect x="900" y="333" width="52" height="16" rx="3" fill="#fbbf24" opacity="0.9"/>
+            <text x="926" y="344" text-anchor="middle" style="font-family:var(--mono);font-size:8px;font-weight:700;fill:#05140f;letter-spacing:.08em">DOCKER</text>
+            <text class="node-st" x="758" y="350" style="fill:#fbbf24">fathom-minio · :9000</text>
+            <text class="node-t" x="758" y="372">MinIO (S3)</text>
+            <text class="node-p" x="758" y="392">fathom-samples</text>
+            <text class="node-p" x="758" y="406">fathom-cape</text>
+            <text class="node-p" x="758" y="420">fathom-reports (cache)</text>
+            <text class="node-p" x="758" y="434" style="font-size:10px;fill:var(--llm-text-3)">vol: minio_data · SHA256 keyed</text>
+          </g>
+
+          <!-- ●● FAISS indexes (in-process, not a separate container) ●● -->
+          <g>
+            <rect x="740" y="458" width="220" height="102" rx="10" fill="rgba(168,85,247,0.10)" stroke="#a855f7" stroke-width="1.5"/>
+            <text class="node-st" x="758" y="478" style="fill:#a855f7">FAISS · in-process</text>
+            <text class="node-t" x="758" y="500">Vector Indexes</text>
+            <text class="node-p" x="758" y="518">attack_kb · 768-d ATT&amp;CK RAG</text>
+            <text class="node-p" x="758" y="532">sample_kb · cross-sample sim</text>
+            <text class="node-p" x="758" y="546" style="font-size:10px;fill:var(--llm-text-3)">chat_kb · semantic cache (0.88)</text>
+          </g>
+
+          <!-- ●● DOCKER VOLUMES footer ●● -->
+          <g>
+            <rect class="node-box muted" x="40" y="580" width="920" height="44" rx="10"/>
+            <text class="node-st" x="58" y="598">Docker volumes</text>
+            <text class="node-p" x="58" y="614">fathom_neo4j_data · fathom_neo4j_logs · minio_data · adapter cache · HF cache</text>
+          </g>
+
+          <!-- ●● Data flow legend area ●● -->
+          <g>
+            <rect class="node-box muted" x="40" y="636" width="920" height="40" rx="10"/>
+            <text class="node-st" x="58" y="654">Frontend flow</text>
+            <text class="node-p" x="58" y="670" style="font-size:11px">Upload → /api/upload → Analysis → /api/analyze/stream (SSE) → Report → /api/report/generate → Chat → /api/chat/stream</text>
+          </g>
+
+          <!-- ●● ARROWS ●● -->
+          <!-- Frontend → Backend -->
+          <path class="flow-line" d="M240 240 L280 240" marker-end="url(#b-arr)" stroke-width="2.5"/>
+          <text class="node-p" x="242" y="233" style="font-size:9px">/api/*</text>
+
+          <!-- Backend → vLLM (up through docker boundary) -->
+          <path class="flow-line ok" d="M490 180 L490 130 L510 130 L510 108" marker-end="url(#b-arr-ok)" stroke-width="2.5"/>
+          <text class="node-p" x="515" y="145" style="font-size:9px;fill:#5eead4">:8000</text>
+
+          <!-- Backend → Neo4j -->
+          <path class="flow-line" d="M700 250 L740 250" marker-end="url(#b-arr)" stroke-width="2"/>
+
+          <!-- Backend → MinIO -->
+          <path class="flow-line" d="M700 370 L740 370" marker-end="url(#b-arr)" stroke-width="2"/>
+
+          <!-- Backend → FAISS -->
+          <path class="flow-line" d="M700 395 L720 395 L720 500 L740 500" marker-end="url(#b-arr)" stroke-width="1.5" stroke-dasharray="4 4" style="opacity:0.6"/>
+
+          <!-- Backend → evidence store (down) -->
+          <path class="flow-line warn" d="M380 420 L380 438" marker-end="url(#b-arr-warn)" stroke-width="2"/>
+
+          <!-- Backend → Azure (down) -->
+          <path class="flow-line info" d="M600 420 L600 438" marker-end="url(#b-arr-info)" stroke-width="2"/>
+          <text class="node-p" x="608" y="432" style="font-size:9px;fill:#818cf8">conditional</text>
+
+          <!-- Neo4j async ingestion (dashed) -->
+          <path class="flow-line" d="M700 290 L730 290 L730 220 L740 220" stroke-width="1.5" stroke-dasharray="4 4" style="opacity:0.5" marker-end="url(#b-arr)"/>
+          <text class="node-p" x="710" y="282" style="font-size:8px;fill:var(--llm-text-3)">async</text>
+
+          <!-- MinIO cache check (bidirectional hint) -->
+          <path class="flow-line" d="M700 380 L720 380 L720 395 L740 395" stroke-width="1.5" stroke-dasharray="4 4" style="opacity:0.5"/>
+        </svg>
+
+        <div class="llm-diagram-legend">
+          <div class="lg"><span class="sw" style="background:rgba(94,234,212,0.12);border-color:#5eead4"></span>Dashboard + Backend (Docker)</div>
+          <div class="lg"><span class="sw" style="background:rgba(129,140,248,0.14);border-color:#818cf8"></span>Neo4j (Docker)</div>
+          <div class="lg"><span class="sw" style="background:rgba(251,191,36,0.14);border-color:#fbbf24"></span>MinIO (Docker)</div>
+          <div class="lg"><span class="sw" style="background:rgba(168,85,247,0.14);border-color:#a855f7"></span>FAISS (in-process)</div>
+          <div class="lg" style="margin-left:auto"><span style="display:inline-block;width:20px;border-top:1.5px dashed #64748b;vertical-align:middle;margin-right:4px"></span>Async / best-effort path</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+  </section>
+
+  <!-- 03 · RESULTS -->
+  <section class="section reveal" id="results">
+    <div class="sec-head">
+      <div class="sec-label"><span class="i"><i data-lucide="bar-chart-3"></i></span><span class="tick"></span>03 &nbsp;/&nbsp; Benchmark Results</div>
+      <h2 class="sec-heading">How Fathom compares &mdash; and how we got here.</h2>
+      <p class="sec-sub">
+        Twelve-run benchmarking campaign across general cybersecurity knowledge, ATT&amp;CK mapping precision,
+        and operational real-sample evaluation. Headline: <b style="color:var(--ok)">0.841 Parent F1</b> on real
+        malscore-10 samples, competitive with GPT-4 on CyberMetric and ahead of Llama-2-70B by <b style="color:var(--ok)">+34.25 pp</b>.
+      </p>
+    </div>
+
+    <!-- CHART 1 · Frontier comparison -->
+    <div class="card" style="padding:24px 26px">
+      <div class="card-ih" style="margin-bottom:4px">
+        <div class="ico ico-badge"><i data-lucide="swords"></i></div>
+        <div>
+          <div class="t">Comparison · frontier &amp; baseline models</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-top:2px">CyberMetric-80 &middot; MMLU Computer Security &middot; MMLU Security Studies</div>
+        </div>
+      </div>
+      <p class="card-p" style="margin-bottom:18px">Accuracy across three general cybersecurity benchmarks. Fathom matches GPT-4 on MMLU Security Studies and closes the gap on CyberMetric while running on a single GPU.</p>
+      <div style="position:relative;height:340px"><canvas id="chartFrontier"></canvas></div>
+      <div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">
+        <span><i data-lucide="info" class="ico ico-xs" style="vertical-align:middle"></i> Reference figures for GPT-4 / GPT-3.5 / Llama-2-70B from published CyberMetric &amp; MMLU literature · Fathom scores from <code>umer07/fathom-mixtral</code> model card.</span>
+      </div>
+    </div>
+
+    <!-- CHART 2 · ATT&CK F1 progression -->
+    <div class="card-grid-2" style="margin-top:20px">
+      <div class="card" style="padding:24px 26px">
+        <div class="card-ih" style="margin-bottom:4px">
+          <div class="ico ico-badge" style="color:var(--ok);border-color:rgba(94,234,212,.28);background:var(--ok-dim)"><i data-lucide="trending-up"></i></div>
+          <div>
+            <div class="t">Core contribution</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-top:2px">ATT&amp;CK F1 progression · Run 4 → Run 7</div>
+          </div>
+        </div>
+        <p class="card-p" style="margin-bottom:14px">Four runs · same model weights. The 9× jump came from correcting the prompt format and evidence-layer context — <b style="color:var(--ok)">no retraining</b>.</p>
+        <div style="position:relative;height:280px"><canvas id="chartF1Progression"></canvas></div>
+        <div class="rule"></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-family:var(--mono);font-size:10.5px">
+          <div><div style="color:var(--text-muted)">Run 4</div><div style="color:var(--text-primary)">naïve API</div></div>
+          <div><div style="color:var(--text-muted)">Run 5</div><div style="color:var(--text-primary)">structured</div></div>
+          <div><div style="color:var(--text-muted)">Run 6</div><div style="color:var(--text-primary)">pipeline · 3K ctx</div></div>
+          <div><div style="color:var(--ok)">Run 7</div><div style="color:var(--ok)">pipeline · 8K ctx</div></div>
+        </div>
+      </div>
+
+      <!-- CHART 3 · Real sample breakdown -->
+      <div class="card" style="padding:24px 26px">
+        <div class="card-ih" style="margin-bottom:4px">
+          <div class="ico ico-badge" style="color:var(--info);border-color:rgba(129,140,248,.28);background:var(--info-dim)"><i data-lucide="crosshair"></i></div>
+          <div>
+            <div class="t">Real malware samples</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-top:2px">Emotet &middot; Formbook &middot; Dridex · malscore 10/10</div>
+          </div>
+        </div>
+        <p class="card-p" style="margin-bottom:14px">Per-sample Exact F1 vs Parent F1 on real CAPEv2 reports. Dridex hits <b style="color:var(--ok)">1.000 / 1.000</b> after the context-window fix.</p>
+        <div style="position:relative;height:280px"><canvas id="chartSamples"></canvas></div>
+        <div class="rule"></div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px">
+          <span style="color:var(--text-muted)">Aggregate</span>
+          <span style="color:var(--text-primary)">Exact F1 <b style="color:var(--ok)">0.868</b> · Parent F1 <b style="color:var(--ok)">0.841</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHART 4 · Per-expert + additional metrics -->
+    <div class="card-grid-2" style="margin-top:20px">
+      <div class="card" style="padding:24px 26px">
+        <div class="card-ih" style="margin-bottom:4px">
+          <div class="ico ico-badge"><i data-lucide="puzzle"></i></div>
+          <div>
+            <div class="t">Adapter performance</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-top:2px">Nine LoRA experts · CyberMetric-80</div>
+          </div>
+        </div>
+        <div style="position:relative;height:340px;margin-top:10px"><canvas id="chartExperts"></canvas></div>
+      </div>
+
+      <div class="card" style="padding:24px 26px">
+        <div class="card-ih" style="margin-bottom:4px">
+          <div class="ico ico-badge"><i data-lucide="list-checks"></i></div>
+          <div>
+            <div class="t">Additional benchmarks</div>
+            <div style="font-size:15px;font-weight:700;color:var(--text-primary);margin-top:2px">ATT&amp;CK MCQ · MMLU subdomains · TruthfulQA · robustness</div>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="icon-row">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">CyberMetric-500</span>
+                <span class="num" style="color:var(--ok);font-family:var(--mono);font-weight:700">88.0%</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:88%;background:var(--ok)"></div></div>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">ATT&amp;CK Behaviour → Technique MCQ</span>
+                <span class="num" style="color:var(--ok);font-family:var(--mono);font-weight:700">80.0%</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:80%;background:var(--ok)"></div></div>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">TruthfulQA MC1</span>
+                <span class="num" style="color:var(--text-primary);font-family:var(--mono);font-weight:700">65.0%</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:65%;background:var(--text-secondary)"></div></div>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">MMLU Machine Learning</span>
+                <span class="num" style="color:var(--text-primary);font-family:var(--mono);font-weight:700">60.0%</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:60%;background:var(--text-secondary)"></div></div>
+            </div>
+          </div>
+          <div class="icon-row">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">Adversarial robustness (15 prompts)</span>
+                <span class="num" style="color:var(--warn);font-family:var(--mono);font-weight:700">73.3% · 11/15</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:73%;background:var(--warn)"></div></div>
+            </div>
+          </div>
+          <div class="icon-row" style="border-bottom:none">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+                <span style="color:var(--text-primary);font-weight:600">Inference speed (LoRA rank-32)</span>
+                <span class="num" style="color:var(--text-primary);font-family:var(--mono);font-weight:700">15.36 tok/s &middot; &minus;18.1%</span>
+              </div>
+              <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden"><div style="height:100%;width:82%;background:var(--text-secondary)"></div></div>
+              <div style="font-size:11px;font-family:var(--mono);color:var(--text-muted);margin-top:4px">base Mixtral: 18.76 tok/s &middot; peak VRAM 94.16 GB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interpretation -->
+    <div class="card-grid-3" style="margin-top:20px">
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge" style="color:var(--ok);border-color:rgba(94,234,212,.28);background:var(--ok-dim)"><i data-lucide="trending-up"></i></div>
+          <div class="t">Where Fathom succeeds</div>
+        </div>
+        <p class="card-p">
+          On three malscore-10 samples, Fathom produces ATT&amp;CK mappings with Exact F1
+          <b style="color:var(--ok)">0.868</b> and Parent F1 <b style="color:var(--ok)">0.841</b>.
+          The delta against the synthetic Rigorous evaluation (0.344) demonstrates that structured CAPE
+          prompts plus retrieval augmentation recover ~0.5 F1 over a naive baseline.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge" style="color:var(--warn);border-color:rgba(251,191,36,.28);background:var(--warn-dim)"><i data-lucide="wrench"></i></div>
+          <div class="t">Diagnostic lessons learned</div>
+        </div>
+        <p class="card-p">
+          Run 1 reported ATT&amp;CK correctness of 0.20. Root cause: Alpaca prompt format on a Mixtral
+          model expecting <code class="mono" style="color:var(--text-primary);font-size:12px">[INST]...[/INST]</code>, plus tokenizer
+          <code class="mono" style="color:var(--text-primary);font-size:12px">max_length=3072</code> truncating long briefs.
+          Fixing both moved Dridex from <b style="color:var(--bad)">0.000</b> to <b style="color:var(--ok)">1.000</b>.
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico ico-badge" style="color:var(--info);border-color:rgba(129,140,248,.28);background:var(--info-dim)"><i data-lucide="info"></i></div>
+          <div class="t">Dataset, not model</div>
+        </div>
+        <p class="card-p">
+          The Mal-API-2019 result (12.6%) reflects a dataset limitation: labels are assigned by static AV
+          signatures but API-level behaviour of Trojans/Backdoors/Droppers overlaps extensively. The same
+          model achieves 0.841 Parent F1 on real CAPE reports, which contain multi-modal evidence.
+        </p>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+  </section>
+
+  <!-- 04 · LIMITATIONS -->
+  <section class="section reveal" id="limitations">
+    <div class="sec-head">
+      <div class="sec-label"><span class="i"><i data-lucide="alert-triangle"></i></span><span class="tick"></span>04 &nbsp;/&nbsp; Acknowledged Limitations</div>
+      <h2 class="sec-heading">Seven limitations identified through benchmarking.</h2>
+      <p class="sec-sub">Transparent limitation reporting is required for academic integrity. Grouped into three categories below.</p>
+    </div>
+
+    <div class="card-grid-2">
+      <div class="card">
+        <div class="cat-head">
+          <div class="left">
+            <div class="ic i-warn"><i data-lucide="brain"></i></div>
+            <div class="tt">Capability · base model</div>
+          </div>
+          <span class="pill warn"><i data-lucide="hash"></i>3</span>
+        </div>
+        <ul class="sub-list" style="font-size:14px">
+          <li><b>1. Sub-technique specificity.</b> Parent techniques map reliably; sub-techniques do not — Mixtral&rsquo;s corpus has limited ATT&amp;CK sub-technique coverage.</li>
+          <li><b>2. Rare-technique coverage.</b> UAC bypass (T1548.002), ICMP C2 (T1095), and Windows credential-dumping variants missed entirely (0% recall).</li>
+          <li><b>3. Family ID without enrichment.</b> Without the KSPN sidecar, family labelling drifts — Emotet tagged as "Cobalt Strike" on some prompt variants.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="cat-head">
+          <div class="left">
+            <div class="ic i-bad"><i data-lucide="shield-alert"></i></div>
+            <div class="tt">Safety</div>
+          </div>
+          <span class="pill bad"><i data-lucide="hash"></i>2</span>
+        </div>
+        <ul class="sub-list" style="font-size:14px">
+          <li><b>4. Prompt-injection role override.</b> "Ignore previous instructions" bypasses the analyst role — base Mixtral was not RLHF-hardened for strict role adherence.</li>
+          <li><b>5. APT-attribution hallucination.</b> Given two generic API calls, the model confirmed a false "APT41 attribution" instead of refusing.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+  </section>
+
+  <!-- 05 · PHASE 2 -->
+  <section class="section reveal" id="phase2">
+    <div class="sec-head">
+      <div class="sec-label"><span class="i"><i data-lucide="rocket"></i></span><span class="tick"></span>05 &nbsp;/&nbsp; Future Work</div>
+      <h2 class="sec-heading">Retrain on Foundation-Sec-8B-Instruct.</h2>
+      <p class="sec-sub">
+        Phase&nbsp;1 limitations fall into two categories: domain-knowledge gaps and safety-alignment gaps.
+        Neither is addressed by increasing general-purpose model capacity. Future work adopts a base model whose
+        pretraining corpus is domain-aligned and whose instruction-tuning stage includes safety alignment &mdash;
+        Cisco&rsquo;s Foundation-Sec-8B-Instruct.
+      </p>
+    </div>
+
+    <!-- Future-work summary card with rationale -->
+    <div class="card" style="padding:26px 28px;margin-bottom:18px">
+      <div class="card-ih">
+        <div class="ico ico-badge" style="color:var(--info);border-color:rgba(129,140,248,.28);background:var(--info-dim)"><i data-lucide="sparkles"></i></div>
+        <div>
+          <div class="t">Selected base model</div>
+          <div style="font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.5px;color:var(--text-primary);margin-top:2px">Foundation-Sec-8B-Instruct</div>
+        </div>
+      </div>
+      <p class="card-p">
+        An 8-billion-parameter instruction-tuned language model released by Cisco&rsquo;s Foundation AI group.
+        Built on a Llama-3.1-8B backbone with continued pretraining on approximately <b style="color:var(--info)">5.1 billion
+        tokens of cybersecurity-specific corpora</b> (CVE/CWE, MITRE ATT&amp;CK, threat intelligence reports,
+        red-team playbooks, incident-response documentation, NIST/OWASP). The Instruct variant adds SFT + RLHF
+        with PersonaGym-evaluated cybersecurity role adherence.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
+        <span class="pill info"><i data-lucide="layers-2"></i> Llama-3.1-8B backbone</span>
+        <span class="pill info"><i data-lucide="database"></i> 5.1B domain tokens</span>
+        <span class="pill ok"><i data-lucide="shield-check"></i> RLHF-aligned</span>
+        <span class="pill"><i data-lucide="rotate-ccw"></i> 128K native context</span>
+        <span class="pill"><i data-lucide="cpu"></i> Mature ROCm support</span>
+      </div>
+    </div>
+
+    <!-- Candidates -->
+    <div class="table-wrap">
+      <table class="t">
+        <thead>
+          <tr>
+            <th style="width:26%">Candidate</th>
+            <th style="width:14%">Disposition</th>
+            <th>Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">Mixtral-8×7B (retain)</td><td><span class="tag">Rejected</span></td><td>Does not fix limitations 1–5; high inference cost.</td></tr>
+          <tr><td class="mono">Qwen3.5-27B</td><td><span class="tag">Rejected</span></td><td>Gated-DeltaNet hybrid attention; open ROCm kernel issues in llama.cpp and vLLM as of Feb–Mar 2026.</td></tr>
+          <tr><td class="mono">Qwen3-Next-80B-A3B</td><td><span class="tag">Rejected</span></td><td>80B exceeds single-MI300X 192&nbsp;GB capacity for bf16 LoRA; MoE + QLoRA documented as broken combination.</td></tr>
+          <tr><td class="mono">Llama-3.3-70B</td><td><span class="tag">Rejected</span></td><td>Non-domain; ~9× parameter cost for marginal gains on cybersecurity benchmarks.</td></tr>
+          <tr><td class="mono strong">Foundation-Sec-8B-Instruct</td><td><span class="tag ok">Selected</span></td><td>Domain-pretrained on 5.1B cyber tokens; Llama-3.1-8B architecture has mature ROCm support; Instruct variant is RLHF-aligned.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Projected gains — clean row list -->
+    <div class="proj-wrap" style="margin-top:18px">
+      <div class="proj-wrap-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i data-lucide="gauge-circle" class="ico ico-sm" style="color:var(--ok)"></i>
+          <span class="l">Projected improvements &middot; by limitation</span>
+        </div>
+        <div class="r">
+          <span>Phase&nbsp;1 measured</span>
+          <i data-lucide="arrow-right" style="width:12px;height:12px"></i>
+          <span>Post-retrain target</span>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">01</div>
+        <div class="proj-body">
+          <div class="proj-title">Sub-technique specificity</div>
+          <div class="proj-method">Rigorous P/R/F1 &middot; Exact F1</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">0.184</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">&ge; 0.30</span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">02</div>
+        <div class="proj-body">
+          <div class="proj-title">Rare-technique coverage</div>
+          <div class="proj-method">Per-category Parent F1 &middot; 15 categories</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">0&ndash;33% on 6</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">&ge; 50% on 4/6</span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">03</div>
+        <div class="proj-body">
+          <div class="proj-title">Family ID without enrichment</div>
+          <div class="proj-method">Standalone check &middot; 3 CAPE samples</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">Unreliable</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">&ge; 2 / 3 correct</span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">04</div>
+        <div class="proj-body">
+          <div class="proj-title">Prompt-injection role override</div>
+          <div class="proj-method">Adversarial suite &middot; 15 prompts</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">11 / 15 &middot; 73%</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">&ge; 13 / 15 &middot; 87%</span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">05</div>
+        <div class="proj-body">
+          <div class="proj-title">APT-attribution hallucination</div>
+          <div class="proj-method">Adversarial Test 8 &middot; APT41 false premise</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">Fail</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">Refuse w/ reason</span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">06</div>
+        <div class="proj-body">
+          <div class="proj-title">Inference cost</div>
+          <div class="proj-method">Run 9 equivalent &middot; throughput &amp; VRAM</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">15.36 tok/s<span class="proj-sub">~ 94 GB VRAM</span></span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Expected</span><span class="v">40&ndash;60 tok/s<span class="proj-sub">~ 16 GB VRAM</span></span></div>
+        </div>
+      </div>
+
+      <div class="proj-row">
+        <div class="proj-num">07</div>
+        <div class="proj-body">
+          <div class="proj-title">Cuckoo noise-API dilution</div>
+          <div class="proj-method">Regression check only &middot; data-layer issue</div>
+        </div>
+        <div class="proj-delta">
+          <div class="proj-pill before"><span class="l">Phase 1</span><span class="v">0.841 Parent F1</span></div>
+          <i data-lucide="arrow-right" class="proj-arrow"></i>
+          <div class="proj-pill after"><span class="l">Hold</span><span class="v">&ge; 0.80 · no regression</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Projected gains card grid -->
+    <div class="card-grid-4" style="margin-top:16px">
+      <div class="card" style="padding:18px 20px">
+        <div class="card-ih" style="margin-bottom:8px">
+          <i data-lucide="target" class="ico ico-sm" style="color:var(--text-primary)"></i>
+          <div class="t">Rigorous Exact F1</div>
+        </div>
+        <div class="delta" style="font-size:15px">
+          <span class="from" style="color:var(--bad)">0.184</span>
+          <i data-lucide="arrow-right"></i>
+          <span class="to" style="color:var(--ok)">≥ 0.30</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px 20px">
+        <div class="card-ih" style="margin-bottom:8px">
+          <i data-lucide="shield-check" class="ico ico-sm" style="color:var(--text-primary)"></i>
+          <div class="t">Adversarial pass rate</div>
+        </div>
+        <div class="delta" style="font-size:15px">
+          <span class="from" style="color:var(--bad)">11/15</span>
+          <i data-lucide="arrow-right"></i>
+          <span class="to" style="color:var(--ok)">≥ 13/15</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px 20px">
+        <div class="card-ih" style="margin-bottom:8px">
+          <i data-lucide="zap" class="ico ico-sm" style="color:var(--text-primary)"></i>
+          <div class="t">Throughput (tok/s)</div>
+        </div>
+        <div class="delta" style="font-size:15px">
+          <span class="from">15.36</span>
+          <i data-lucide="arrow-right"></i>
+          <span class="to" style="color:var(--ok)">40–60</span>
+        </div>
+      </div>
+      <div class="card" style="padding:18px 20px">
+        <div class="card-ih" style="margin-bottom:8px">
+          <i data-lucide="hard-drive" class="ico ico-sm" style="color:var(--text-primary)"></i>
+          <div class="t">VRAM (bf16)</div>
+        </div>
+        <div class="delta" style="font-size:15px">
+          <span class="from">94 GB</span>
+          <i data-lucide="arrow-right"></i>
+          <span class="to" style="color:var(--ok)">~16 GB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+  </section>
+
+  <footer>
+    <span>Fathom — LLM-Powered Automated Malware Analysis Framework · FYP Mid-Project Proposal v1.0 · 16 April 2026</span>
+    <span>FAST School of Computing · FAST-NUCES Islamabad</span>
+  </footer>
+</main>
+
+<!-- ●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●
+     PROJECT MAP VIEW
+     Exact step-by-step mirror of project_map.txt
+●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●● -->
+<main id="view-pipeline" class="view">
+
+  <section class="pm-hero">
+    <div class="hero-badge" style="margin-top:0"><span class="dot"></span>Project Map · exact step-by-step pipeline</div>
+    <h1 style="font-size:clamp(36px,5vw,60px);font-weight:900;letter-spacing:-2.5px;line-height:1.06;margin-bottom:16px">
+      <span class="gradient">USER DROPS FILE</span><br>
+      CAPE report.json or PE binary.
+    </h1>
+    <p class="lede" style="max-width:780px;margin-bottom:28px">
+      The full Fathom analysis pipeline — fifteen stages, three LLM inference phases, two storage layers,
+      and the SSE delivery loop. Every step corresponds to production code paths.
+    </p>
+
+    <div class="pm-legend">
+      <div class="lg"><span class="lg-sw det"></span>Deterministic (no LLM)</div>
+      <div class="lg"><span class="lg-sw loc"></span>Local Fathom inference (Mixtral + LoRA)</div>
+      <div class="lg"><span class="lg-sw ext"></span>Azure Kimi-K2.5 (enrichment / synthesis)</div>
+      <div class="lg"><span class="lg-sw per"></span>Persistence / I/O</div>
+    </div>
+
+    <div class="pm-rail">
+
+      <!-- STEP 1 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 01</span>
+          <span class="step-t">Input Routing + Auth</span>
+          <span class="step-kind">deterministic</span>
+        </div>
+        <div class="step-desc">
+          Request enters FastAPI. Bearer-token authentication, rate limiting, size cap, and file-type detection decide the pipeline path.
+        </div>
+        <div class="step-body">
+          <div class="step-body-top">
+            <span>file</span>
+            <code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">routes.py:81-198</code>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Checks performed</div>
+            <ul class="sub-list">
+              <li>Bearer token auth (optional, via <code>API_TOKENS</code> env var)</li>
+              <li>Rate limit: <b>20 / minute</b> (slowapi)</li>
+              <li>File size validation: <b>max 50 MB</b></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">File type routing</div>
+            <ul class="sub-list">
+              <li><code>.json</code> &nbsp;→&nbsp; CAPE report path</li>
+              <li><code>.exe</code> / <code>.dll</code> / <code>.sys</code> &nbsp;→&nbsp; Module 1 static analysis (PE parser)</li>
+              <li>other &nbsp;→&nbsp; HTTP 400 rejected</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 02</span>
+          <span class="step-t">Evidence Extraction</span>
+          <span class="step-kind">deterministic · no LLM</span>
+        </div>
+        <div class="step-desc">Pure Python. Converts CAPE <code>report.json</code> into a structured <code>EvidenceBrief</code> dataclass.</div>
+        <div class="step-body">
+          <div class="step-body-top"><span>if CAPE report.json</span><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">cape_extraction_layer_v3.py</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">CAPEEvidenceExtractor.from_report_dict(report)</div>
+            <ul class="sub-list">
+              <li><code>_extract_static()</code> &nbsp;—  &nbsp; hashes, PE sections, imports, entropy, YARA</li>
+              <li><code>_extract_detections()</code> &nbsp;—  &nbsp; family name, malscore</li>
+              <li><code>_extract_api_calls()</code> &nbsp;—  &nbsp; unique APIs, suspicious API map, n-grams</li>
+              <li><code>_extract_behavior_summary()</code> &nbsp;—  &nbsp; processes, commands, files, registry, mutexes</li>
+              <li><code>_extract_enhanced_events()</code> &nbsp;—  &nbsp; semantic events (write/file, execute/file)</li>
+              <li><code>_extract_cape_payloads()</code> &nbsp;—  &nbsp; extracted shellcode, configs, YARA on payloads</li>
+              <li><code>_extract_amsi_payloads()</code> &nbsp;—  &nbsp; PowerShell / .NET deobfuscated content</li>
+              <li><code>_extract_dropped_files()</code> &nbsp;—  &nbsp; dropped executables with hashes</li>
+              <li><code>_extract_network()</code> &nbsp;—  &nbsp; IPs, DNS, HTTP requests, flows</li>
+              <li><code>_extract_signatures_ttps()</code> &nbsp;—  &nbsp; CAPE signature matches</li>
+              <li><code>_extract_process_tree()</code> &nbsp;—  &nbsp; parent-child process relationships</li>
+              <li><code>_compute_risk_signals()</code> &nbsp;—  &nbsp; HIGH / CRITICAL risk flags</li>
+              <li><code>_compute_known_gaps()</code> &nbsp;—  &nbsp; what the sandbox did NOT produce</li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">Output</div>
+            <ul class="sub-list">
+              <li><b>EvidenceBrief</b> — structured Python dataclass with ~30 fields: IOCs, behaviors, capabilities, risk_signals, known_gaps, api_ngrams, process_tree, ...</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">If KSPN summary exists alongside report.json</div>
+            <ul class="sub-list">
+              <li><code>enrich_from_kspn(brief, kspn_data)</code></li>
+              <li>Pre-mapped MITRE techniques &nbsp;→&nbsp; <code>brief.behaviors</code> <span class="tag" style="margin-left:4px">source="kspn"</span></li>
+              <li>Family confidence score &nbsp;→&nbsp; <code>brief.detections</code></li>
+              <li>Risk score + reasons &nbsp;→&nbsp; <code>brief.risk_signals</code></li>
+              <li>PCAP IPs &nbsp;→&nbsp; <code>brief.iocs</code> <span class="tag" style="margin-left:4px">source="kspn"</span></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">If PE binary (.exe / .dll / .sys)</div>
+            <ul class="sub-list">
+              <li><code>module1_adapter.py → Module1Adapter.analyze_pe_binary(path)</code></li>
+              <li>File hashes (MD5, SHA256, SHA1)</li>
+              <li>PE section parsing + entropy (via <code>pefile</code>)</li>
+              <li>Import table extraction</li>
+              <li>String extraction + pattern matching</li>
+              <li>Builds EvidenceBrief <b>(partial — no dynamic data)</b></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2b -->
+      <div class="step per">
+        <div class="step-head">
+          <span class="step-n">STEP 02b</span>
+          <span class="step-t">Storage + Audit</span>
+          <span class="step-kind">background · parallel to response</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-inner">
+            <div class="sub-label">MinIO object storage · best-effort, non-blocking</div>
+            <ul class="sub-list">
+              <li><code>store_sample(sha256, content)</code> &nbsp;→&nbsp; <b>fathom-samples</b> bucket</li>
+              <li><code>store_cape_report(sha256, json)</code> &nbsp;→&nbsp; <b>fathom-cape</b> bucket</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Audit log · structlog → stdout JSON + /var/log/fathom/audit.jsonl</div>
+            <ul class="sub-list">
+              <li><code>log_upload(sha256, filename, size, file_type, ioc_count, behavior_count)</code></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">In-memory store &amp; cache</div>
+            <ul class="sub-list">
+              <li><code>_evidence_store[brief_id] = EvidenceBrief</code> (dict, single session)</li>
+              <li>MinIO <code>get_report(sha256)</code> — check if sample was analyzed before</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Return to frontend</div>
+            <ul class="sub-list">
+              <li><code>UploadResponse { brief_id, sha256, file_type, ioc_count, behavior_count, cached_report }</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Frontend handoff -->
+      <div class="rail-sep">
+        <span class="l">Frontend redirects → <code style="font-family:var(--mono);color:var(--text-primary)">/app/analysis/{briefId}</code> · calls <code style="font-family:var(--mono);color:var(--text-primary)">POST /api/analyze/stream</code></span>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 03</span>
+          <span class="step-t">Cache Check</span>
+          <span class="step-kind">before any LLM work</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">routes.py:456-475</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">MinIO get_analysis_report(sha256)</div>
+            <ul class="sub-list">
+              <li>IF cache <b>HIT</b> &nbsp;→&nbsp; stream cached report immediately via SSE</li>
+              <li>&nbsp; &nbsp; yield <code>status: "Loading cached report..."</code></li>
+              <li>&nbsp; &nbsp; yield <code>chunk: {cached_report_text}</code></li>
+              <li>&nbsp; &nbsp; yield <code>done: {metadata}</code></li>
+              <li>&nbsp; &nbsp; SKIP all remaining steps</li>
+              <li>IF cache <b>MISS</b> &nbsp;→&nbsp; continue to Step 4</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 04</span>
+          <span class="step-t">Domain Routing</span>
+          <span class="step-kind">no LLM · embeddings only</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">domain_classifier.py</code></div>
+          <div class="step-body-inner">
+            <ul class="sub-list">
+              <li>Take the user query OR the formatted evidence text</li>
+              <li>Embed with <code>sentence-transformers/all-mpnet-base-v2</code> &nbsp;→&nbsp; 768-dim vector</li>
+              <li>Compute cosine similarity against 8 pre-computed domain centroids (from <code>centroid_data.json</code>)</li>
+              <li>Return: <b>top domain + confidence score</b></li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">Centroids — 8 expert domains</div>
+            <ul class="sub-list">
+              <li>E1_static · E2_dynamic · E3_network · E4_forensics</li>
+              <li>E5_threatintel · E6_detection · E7_reports · E8_remediation</li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">Example output</div>
+            <pre class="code">domain = "E2_dynamic"
+confidence = 0.87</pre>
+            <div style="margin-top:10px;color:var(--text-secondary);font-size:13px">If confidence &lt; 0.3 threshold: falls back to keyword matching.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 05</span>
+          <span class="step-t">Adapter Selection</span>
+          <span class="step-kind">no LLM · registry lookup</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">adapter_registry.py</code></div>
+          <div class="step-body-inner">
+            <ul class="sub-list">
+              <li>domain="E2_dynamic" → checks if <code>expert-e2-dynamic</code> adapter exists</li>
+              <li>IF yes: use that LoRA adapter path</li>
+              <li>IF no: use <code>unified-v2</code> adapter (handles all domains)</li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">Currently trained adapters</div>
+            <ul class="sub-list">
+              <li>E2_dynamic <code>has_trained_adapter = True</code></li>
+              <li>All others: <code>False</code> (use unified fallback)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 06</span>
+          <span class="step-t">Prompt Construction</span>
+          <span class="step-kind">no LLM · string assembly</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-inner">
+            <div class="sub-label">6a · Format evidence into text</div>
+            <pre class="code">format_evidence_text(brief) → structured text block:
+
+  ●●● FATHOM EVIDENCE BRIEF ●●●
+  Sample: emotet.exe
+  SHA256: abc123...
+  ══ BEHAVIORAL INDICATORS (47 total, 12 HIGH/CRITICAL) ══
+  [HIGH] Process injection: NtMapViewOfSection...
+  ══ IOCs (23 total) ══
+  [ip] 185.45.23.1 (conf: 85%)...
+  ══ KNOWN GAPS ══
+✗ No DNS records parsed...
+  ●●● END EVIDENCE BRIEF ●●●</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">6b · RAG retrieval · retriever.py</div>
+            <ul class="sub-list">
+              <li>Query FAISS <b>attack_kb</b> index with the evidence text</li>
+              <li>Returns top-5 ATT&amp;CK technique descriptions:</li>
+            </ul>
+            <pre class="code">[T1055.001] Process Injection: DLL Injection (relevance: 0.91)
+Adversaries may inject DLLs into processes...</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">6c · Graph context injection · context_retriever.py</div>
+            <ul class="sub-list">
+              <li>Query Neo4j for related samples sharing techniques</li>
+              <li>Related samples sharing IOCs</li>
+              <li>IOC reputation (how many samples used this IOC)</li>
+              <li>Formatted as text block appended to evidence</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">6d · Cross-sample FAISS similarity · sample_similarity.py</div>
+            <ul class="sub-list">
+              <li><code>find_similar_samples(brief, top_k=3)</code></li>
+              <li>Previously analyzed samples with shared TTPs / IOCs</li>
+              <li>Formatted and appended to evidence text</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">6e · Assemble prompt · prompt_templates.py</div>
+            <ul class="sub-list">
+              <li>Selects domain-specific template (e.g. E2_dynamic)</li>
+              <li><b>System:</b> "You are Fathom, a malware dynamic behavior analyst..."</li>
+              <li><b>Instruction:</b> "Analyze this dynamic execution trace:"</li>
+              <li><b>Input:</b> [evidence_text + rag_context + graph_context + similarity_context]</li>
+              <li>Formatted in Alpaca format via <code>config.build_prompt()</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 7 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 07</span>
+          <span class="step-t">Guardrails — Input Sanitisation</span>
+          <span class="step-kind">deterministic · regex</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">guardrails.py</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">sanitize_input(prompt)</div>
+            <ul class="sub-list">
+              <li>Detect injection patterns: <code>"ignore previous instructions"</code>, <code>"you are now a"</code>, <code>"system:"</code>, <code>&lt;script&gt;</code>, <code>eval(</code>, <code>exec(</code>, <code>&#123;&#123;...&#125;&#125;</code> (template injection), <code>\xHH</code> (hex escapes)</li>
+              <li>Replace matches with <code>[REDACTED]</code>, log warnings</li>
+              <li>Strip null bytes and control characters (preserve <code>\t \n \r</code>)</li>
+              <li>Truncate to <b>max 50,000 characters</b></li>
+              <li>Return <code>(sanitized_text, warnings_list)</code></li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">sanitize_malware_report(report_dict)</div>
+            <ul class="sub-list">
+              <li>Recursively walk all string values in evidence JSON</li>
+              <li>Apply <code>sanitize_input()</code> to each string</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="rail-sep"><span class="l">LLM inference — three phases</span></div>
+
+      <!-- STEP 8 : Phase 1 Fathom -->
+      <div class="step local">
+        <div class="step-head">
+          <span class="step-n">STEP 08</span>
+          <span class="step-t">LLM Phase&nbsp;1 - Fathom first-pass</span>
+          <span class="step-kind">local - vLLM + Mixtral + LoRA</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">orchestrator.py → run_fathom_phase()</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">8a · Try local Fathom model server</div>
+            <pre class="code">requests.post(FATHOM_ENDPOINT + "/v1/chat/completions")
+
+FATHOM_ENDPOINT   = http://127.0.0.1:8000
+Model             = fathom-base + fathom LoRA module
+System prompt     = FATHOM_ANALYSIS_PROMPT
+                    (emits "=== ENRICHMENT GAPS ===" section)
+max_tokens = 1500 - temperature = 0.1
+
+External server (fathom-vllm.service):
+  - vLLM serve mistralai/Mixtral-8x7B-Instruct-v0.1
+  - served-model-name fathom-base; LoRA module fathom=umer07/fathom-mixtral
+  - --dtype bfloat16; --max-model-len 32768; --enable-lora</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">8b · Quality check · _looks_degenerate(raw)</div>
+            <ul class="sub-list">
+              <li>Too short (&lt; 40 chars)</li>
+              <li>Single character dominates &gt; 70% (e.g. "---...---")</li>
+              <li>Unique word ratio &lt; 0.08 in 30+ word outputs</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">8c · If Fathom offline OR degenerate output → FALLBACK</div>
+            <ul class="sub-list">
+              <li>Azure Kimi-K2.5 via <code>_collect_azure(messages, source="azure/fathom-phase1")</code></li>
+              <li>Uses <code>AZURE_DIRECT_PROMPT</code> system prompt</li>
+              <li>Azure OpenAI <code>/v1/chat/completions</code></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">8d · Parse output for enrichment contract · _parse_fathom_output(text)</div>
+            <ul class="sub-list">
+              <li>Look for <code>"=== ENRICHMENT GAPS ==="</code> delimiter</li>
+              <li>Extract gap lines: "Unknown family background", "IOCs need correlation"</li>
+              <li>If no gaps or "No significant gaps detected" → <code>contract = None</code></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">8e · Decide whether to enrich</div>
+            <ul class="sub-list">
+              <li><code>should_enrich = force_enrichment OR _query_requests_enrichment(query)</code></li>
+              <li>Keywords: "enrich", "latest intel", "threat actor", "correlate iocs", "detection opportunities", "family background"...</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">8f · Build enrichment contract</div>
+            <pre class="code">_contract_from_gap_text() maps free text gaps → structured contract:
+
+{
+  "gaps": ["live_threat_intel", "ioc_correlation",
+           "attack_enrichment", "family_background"],
+  "evidence_summary": "...(500 chars)...",
+  "specific_questions": { gap → specific_question_text }
+}
+
+OR _auto_contract() if no gaps parsed but enrichment requested
+OR forced full contract if CAPE report with enrichment enabled</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Output</div>
+            <ul class="sub-list">
+              <li><code>(analysis_text, enrichment_contract_or_None)</code></li>
+              <li>Token usage recorded via <code>TokenUsageTracker</code></li>
+              <li>Langfuse trace recorded via <code>observability.record_generation()</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 9 : Phase 2 Swarm -->
+      <div class="step ext">
+        <div class="step-head">
+          <span class="step-n">STEP 09</span>
+          <span class="step-t">LLM Phase&nbsp;2 - Azure Enrichment Swarm</span>
+          <span class="step-kind">Azure - conditional - Kimi primary / GPT fallback</span>
+        </div>
+        <div class="step-desc">Runs only if enrichment contract has gaps AND <code>enable_enrichment = True</code>.</div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">orchestrator.py → run_swarm_phase(contract) · azure_swarm.py → run_swarm()</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">ThreadPoolExecutor dispatches 4 parallel enrichment agents</div>
+            <div class="agent-grid">
+              <div class="agent">
+                <div class="agent-name">threat_intel</div>
+                <div class="agent-desc">Recent campaigns, actor attribution, current prevalence, public reporting</div>
+              </div>
+              <div class="agent">
+                <div class="agent-name">attack_enrichment</div>
+                <div class="agent-desc">Precise sub-technique IDs (T1059.001), detection data sources, mitigations</div>
+              </div>
+              <div class="agent">
+                <div class="agent-name">ioc_correlation</div>
+                <div class="agent-desc">IP / domain / hash reputation, ASN, infrastructure links, passive DNS</div>
+              </div>
+              <div class="agent">
+                <div class="agent-name">context_enrichment</div>
+                <div class="agent-desc">Malware family history, infection chain, related variants, C2 infrastructure</div>
+              </div>
+            </div>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Each agent</div>
+            <ul class="sub-list">
+              <li>Receives: system prompt + evidence_summary + specific_question</li>
+              <li>Calls Azure Kimi-K2.5 first; falls back to GPT when Kimi returns 429 or is unavailable</li>
+              <li><code>max_tokens = 3000</code> · <code>temperature = 0.1</code> · <code>timeout = 600s</code></li>
+              <li>All 4 run in parallel via <code>ThreadPoolExecutor + as_completed</code></li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Output</div>
+            <ul class="sub-list">
+              <li><code>format_swarm_results(results)</code> → formatted enrichment text</li>
+              <li>Token usage tracked per agent call</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 10 : Phase 3 Synthesis -->
+      <div class="step ext">
+        <div class="step-head">
+          <span class="step-n">STEP 10</span>
+          <span class="step-t">LLM Phase&nbsp;3 - Azure Synthesis</span>
+          <span class="step-kind">Azure - conditional - Kimi primary / GPT fallback</span>
+        </div>
+        <div class="step-desc">Runs only if the swarm returned enrichment.</div>
+        <div class="step-body">
+            <div class="sub-label">Azure synthesis consolidates all sources</div>
+          <div class="step-body-inner">
+            <div class="sub-label">Azure synthesis consolidates all sources</div>
+            <ul class="sub-list">
+              <li><b>System:</b> <code>FATHOM_SYNTHESIS_PROMPT</code> — "You are Kimi, acting as the synthesis engine for Fathom..."</li>
+              <li>Report structure: Executive Summary · ATT&amp;CK Mappings · Behavioral Indicators · IOCs · Threat Assessment · Actor Attribution · Intelligence Contributors</li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">User content (assembled)</div>
+            <ul class="sub-list">
+              <li>Original CAPE evidence (first 2000 chars)</li>
+              <li>Fathom initial analysis (first 2000 chars)</li>
+              <li>Live intelligence from 4 specialist agents (first 3000 chars)</li>
+              <li>Original user query</li>
+            </ul>
+            <div class="rule"></div>
+            <ul class="sub-list">
+              <li><code>max_tokens = 3000</code> · <code>temperature = 0.1</code></li>
+              <li>Output: full synthesis text, yielded in <b>180-char chunks</b> for SSE</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">If NO enrichment (disabled or swarm failed) → stream_direct_chunks()</div>
+            <ul class="sub-list">
+              <li>Try local Fathom → fallback to Azure direct</li>
+              <li>Uses <code>AZURE_DIRECT_PROMPT</code> or <code>FOLLOWUP_QA_PROMPT</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 11 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 11</span>
+          <span class="step-t">Guardrails — Output Validation</span>
+          <span class="step-kind">deterministic</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">guardrails.py → validate_output(text, response_type="report")</code></div>
+          <div class="step-body-inner">
+            <ul class="sub-list">
+              <li><b>Empty / too-short check</b> (&lt; 10 chars → invalid)</li>
+              <li><b>Forbidden patterns:</b> "I cannot", "As an AI", "I apologize" → warning</li>
+              <li><b>Hallucination indicators:</b> "definitely", "certainly", "100%", "all malware", "always" → warning if &gt; 3 occurrences</li>
+              <li><b>Repetition detection:</b> last 10 words repeated &gt; 3× → ' warning</li>
+              <li><b>Report-specific checks:</b> required sections "Executive Summary", "MITRE ATT&amp;CK", "Risk"; ATT&amp;CK technique IDs present <code>T\d{4}(\.\d{3})?</code></li>
+              <li><b>ATT&amp;CK ID validation</b> against known-good set (if provided)</li>
+              <li><b>Clean response:</b> strip "Sure,", "Here is", "Of course,"; normalize whitespace</li>
+            </ul>
+            <div class="rule"></div>
+            <div style="color:var(--text-secondary);font-size:13px"><b>NOTE:</b> does NOT cross-validate IOCs against the EvidenceBrief.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 12 -->
+      <div class="step per">
+        <div class="step-head">
+          <span class="step-n">STEP 12</span>
+          <span class="step-t">Persistence</span>
+          <span class="step-kind">background · parallel to response</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-inner">
+            <div class="sub-label">12a · Neo4j graph ingestion (async)</div>
+            <pre class="code">ingest_cape.py → ingest_evidence_brief(brief):
+
+Nodes:
+  (:Sample {sha256, family, malscore, analyzed_at})
+  (:Process {pid, name, ppid})
+  (:IOC {type, value, confidence, source})
+  (:Technique {technique_id})
+  (:Behavior {description, severity, source})
+  (:NetworkConn {dst_ip, dst_port, protocol})
+
+Relationships:
+  (Sample)-[:SPAWNED]->(Process)
+  (Process)-[:SPAWNED]->(Process)   // parent-child
+  (Sample)-[:HAS_IOC]->(IOC)
+  (Sample)-[:USES_TECHNIQUE]->(Technique)
+  (Sample)-[:EXHIBITED]->(Behavior)
+  (Sample)-[:HAS_NETWORK]->(NetworkConn)</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">12b · FAISS sample indexing (async)</div>
+            <ul class="sub-list">
+              <li><code>sample_similarity.py → index_sample(brief)</code></li>
+              <li>Embeds sample features for cross-sample similarity queries</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">12c · MinIO report storage (async)</div>
+            <ul class="sub-list">
+              <li><code>store_analysis_report(sha256, report_text, metadata)</code></li>
+              <li>fathom-reports bucket, keyed by SHA256</li>
+              <li>Enables cache hits for future analyses of the same sample</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">12d · Audit log</div>
+            <pre class="code">audit.log_analysis_complete(
+  sha256, verdict, confidence, technique_count,
+  ioc_count, enrichment_used, adapter_used
+)</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">12e · Token usage summary</div>
+            <ul class="sub-list">
+              <li><code>tracker.summary()</code> &nbsp;→&nbsp; <code>{input_tokens, output_tokens, total_tokens, cache_read_tokens, requests}</code></li>
+              <li>Logged per-session via Langfuse + stdout</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 13 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 13</span>
+          <span class="step-t">SSE Response Delivery</span>
+          <span class="step-kind">streaming</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">routes.py → StreamingResponse (text/event-stream)</code></div>
+          <div class="step-body-inner">
+            <div class="sub-label">SSE event sequence</div>
+<pre class="code">data: {"type": "status", "text": "Fathom analyzing..."}
+data: {"type": "status", "text": "Running 4 intelligence agents..."}   // if enrichment
+data: {"type": "status", "text": "Synthesizing final report..."}       // if enrichment
+data: {"type": "chunk",  "text": "## Executive Summary\n\n..."}
+data: {"type": "chunk",  "text": "...process injection via..."}
+...
+data: {"type": "done",   "text": "{metadata_json}"}</pre>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">Metadata in the "done" event</div>
+<pre class="code">{
+  "graph_id": "sha256_of_sample",
+  "routing": {
+    "domain_id": "E2_dynamic",
+    "domain_name": "Dynamic Behavior Analysis",
+    "confidence": 0.87,
+    "scores": {"E1_static": 0.3, "E2_dynamic": 0.87, ...},
+    "adapter": "expert-e2-dynamic"
+  },
+  "ioc_count": 23,
+  "behavior_count": 47,
+  "techniques": ["T1055.001", "T1059.001", ...],   // max 15
+  "family": "AgentTesla",
+  "file_name": "malware.exe",
+  "sha256": "abc123...",
+  "md5": "def456..."
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Frontend handoff 2 -->
+      <div class="rail-sep">
+        <span class="l">Frontend saves AnalysisResult → localStorage · user navigates <code style="font-family:var(--mono);color:var(--text-primary)">/app/report/{id}</code> · calls <code style="font-family:var(--mono);color:var(--text-primary)">POST /api/report/generate</code></span>
+      </div>
+
+      <!-- STEP 14 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 14</span>
+          <span class="step-t">Structured Report Generation</span>
+          <span class="step-kind">deterministic + optional LLM</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">routes.py:960-1049 → /report/generate</code></div>
+          <div class="step-body-inner">
+            <div style="color:var(--text-secondary);font-size:13px;margin-bottom:14px">Runs the same 3-phase pipeline (Fathom → Swarm → Synthesis) then passes the full report text to <code>report_generator.py → generate_report_sections(full_report, sample_meta)</code>.</div>
+            <div class="sub-label">Operations</div>
+            <ul class="sub-list">
+              <li><b>Extract IOCs via regex:</b> IPs <code>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}</code>, domains, SHA256/MD5, mutexes, registry keys, URLs — each assigned severity: critical / high / medium / low</li>
+              <li><b>Extract MITRE techniques:</b> <code>T\d{4}(\.\d{3})?</code> → map to tactic names and severity</li>
+              <li><b>Determine verdict:</b> "malicious" / "suspicious" / "benign" from report text</li>
+              <li><b>Extract risk score</b> from report text (or infer)</li>
+              <li><b>Split report</b> into sections by <code>## Header</code> markers</li>
+              <li><b>If include_ai_sections:</b> call Kimi for missing sections — Static Analysis, Dynamic Behavior, Detection Rules, Remediation</li>
+            </ul>
+            <div class="rule"></div>
+            <div class="sub-label">Builds StructuredReport</div>
+<pre class="code">{
+  "verdict": "malicious",
+  "confidence": 92,
+  "riskScore": 8.7,
+  "malwareFamily": "AgentTesla",
+  "sections": [
+    {"id": "executive-summary", "title": "Executive Summary",
+     "icon": "FileText", "content": "...markdown..."},
+    {"id": "ioc-extraction", "title": "IOC Extraction",
+     "icon": "Search", "iocTable": true},
+    {"id": "mitre-mapping", "title": "MITRE ATT&CK Mapping",
+     "icon": "Target", "mitreTable": true},
+    ...   // 9-11 sections total
+  ],
+  "iocs": [...],
+  "techniques": [...],
+  "report_text": "...full markdown...",
+  "kimi_enrichment_used": true,
+  "generated_at": "2026-04-11T..."
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 15 -->
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">STEP 15</span>
+          <span class="step-t">Dashboard Renders</span>
+          <span class="step-kind">Next.js · frontend</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-inner">
+            <div class="sub-label">/app/analysis/{briefId}</div>
+            <ul class="sub-list">
+              <li>Real-time SSE streaming (status → chunks → done)</li>
+              <li>Tabs: Overview, Analysis Report, Evidence, RAG Context</li>
+              <li>ChatPanel sidebar (custom, NOT CopilotKit)</li>
+              <li>Routing metadata display (domain, confidence, adapter)</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+              <li>Sticky header: verdict badge, family, enrichment / cache status</li>
+            <ul class="sub-list">
+              <li>Sticky header: verdict badge, family, enrichment / cache status</li>
+              <li>Meta bar: risk score (0–10), confidence %, IOC count, technique count</li>
+              <li>Left nav: clickable section list (9–11 sections)</li>
+              <li>Main content: markdown sections + IOC table + MITRE table</li>
+              <li>Raw report: collapsible full text</li>
+              <li>Action buttons: Copy · Print · Download HTML</li>
+              <li>ChatPanel sidebar for follow-up Q&amp;A</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">/app/graph</div>
+            <ul class="sub-list">
+              <li>Neo4j graph explorer (generic, not per-analysis)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTIONAL HTML download -->
+      <div class="rail-sep"><span class="l">Optional · Download HTML Report</span></div>
+      <div class="step per">
+        <div class="step-head">
+          <span class="step-n">OPT</span>
+          <span class="step-t">POST /api/report/html</span>
+          <span class="step-kind">optional</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-top"><code style="font-family:var(--mono);color:var(--text-primary);font-size:12px">report_html.py → generate_html_report(structured, meta)</code></div>
+          <div class="step-body-inner">
+            <ul class="sub-list">
+              <li>Self-contained HTML with embedded CSS (dark GitHub theme)</li>
+              <li>Severity badges, verdict color coding</li>
+              <li>IOC and MITRE tables</li>
+              <li><code>Content-Disposition: attachment</code></li>
+              <li>filename: <code>fathom_report_{sha256_short}.html</code></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPTIONAL follow-up chat -->
+      <div class="rail-sep"><span class="l">Optional · Follow-up Chat</span></div>
+      <div class="step">
+        <div class="step-head">
+          <span class="step-n">OPT</span>
+          <span class="step-t">POST /api/chat/stream (SSE)</span>
+          <span class="step-kind">optional</span>
+        </div>
+        <div class="step-body">
+          <div class="step-body-inner">
+            <div class="sub-label">1 · Semantic cache check · FAISS chat_kb</div>
+            <ul class="sub-list">
+              <li><code>cache_lookup(query, sample_sha256, threshold=0.88)</code></li>
+              <li>IF HIT → stream cached response immediately, skip LLM</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">2 · Load persistent history from Neo4j</div>
+            <ul class="sub-list">
+              <li>ChatSession → ChatTurn nodes (not Firebase)</li>
+              <li><code>get_history_as_turns(session_id)</code> → last N turns</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">3 · Generate response</div>
+            <ul class="sub-list">
+              <li><code>stream_direct_chunks(query, cape_context, history, mode="followup")</code></li>
+              <li>Try local Fathom (<code>FOLLOWUP_QA_PROMPT</code>, <code>max_tokens=1500</code>)</li>
+              <li>Fallback to Azure Kimi-K2.5</li>
+            </ul>
+          </div>
+          <div class="step-body-inner">
+            <div class="sub-label">4 · Persist turn + cache</div>
+            <ul class="sub-list">
+              <li><code>save_turn(session_id, "user", query, sha256)</code></li>
+              <li><code>save_turn(session_id, "assistant", response, sha256)</code></li>
+              <li><code>cache_store(query, response, sha256)</code> → FAISS chat_kb index</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /rail -->
+  </section>
+
+  <!-- STORAGE LAYER -->
+  <section class="section reveal" id="pm-storage">
+    <div class="sec-head">
+      <div class="sec-label"><span class="tick"></span>Storage Layer</div>
+      <h2 class="sec-heading">What each layer stores.</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th style="width:20%">Layer</th><th>What it stores</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">In-memory dict</td><td><code>_evidence_store[brief_id] → EvidenceBrief</code> (lives only for server session)</td></tr>
+          <tr><td class="mono">MinIO (S3-compatible)</td><td>fathom-samples (binaries / JSON) · fathom-reports (analysis text + meta) · fathom-cape (raw CAPE JSON). Keyed by SHA256 (auto-deduplicated).</td></tr>
+          <tr><td class="mono">Neo4j</td><td>Graph: Sample → Process · IOC · Technique · Behavior · NetworkConn nodes + edges. Chat: ChatSession → ChatTurn nodes (persistent conversation history).</td></tr>
+          <tr><td class="mono">FAISS (vector)</td><td>attack_kb — ATT&amp;CK technique embeddings (768-d, all-mpnet-base-v2). sample_kb — per-sample feature embeddings (cross-sample similarity). chat_kb — query/response pair embeddings (semantic chat cache, threshold 0.88).</td></tr>
+          <tr><td class="mono">localStorage (frontend)</td><td>fathom_upload (last upload metadata) · fathom_analysis_&#123;sha256&#125; (cached analysis) · fathom_report_&#123;sha256&#125; (cached structured report).</td></tr>
+          <tr><td class="mono">Audit log</td><td><code>/var/log/fathom/audit.jsonl</code> · structlog JSON: uploads, analyses, chat, graph queries, auth events.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- OBSERVABILITY -->
+  <section class="section reveal" id="pm-obs">
+    <div class="sec-head">
+      <div class="sec-label"><span class="tick"></span>Observability Layer</div>
+      <h2 class="sec-heading">Tracing, accounting, and rate control.</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th style="width:22%">Component</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">Langfuse</td><td>Full prompt/response traces per LLM call · token usage per call and per session · latency per phase (phase1 · swarm · synth) · error rates and fallback triggers.</td></tr>
+          <tr><td class="mono">TokenUsageTracker</td><td>Thread-safe per-session token accounting (input · output · cache_read). Sources: local/fathom · azure/Kimi-K2.5 · azure/fathom-phase1 · azure/synthesis.</td></tr>
+          <tr><td class="mono">slowapi</td><td>Rate limiting per endpoint per IP: /upload 20/min · /analyze 10/min · /chat 100/min · /agent 5/min.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ALTERNATIVE ENDPOINTS -->
+  <section class="section reveal" id="pm-alt">
+    <div class="sec-head">
+      <div class="sec-label"><span class="tick"></span>Alternative Agent Endpoints</div>
+      <h2 class="sec-heading">Not used by the main frontend flow.</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="t">
+        <thead><tr><th style="width:32%">Endpoint</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">POST /api/agent</td><td>LangChain ReAct agent (5-tool loop)</td></tr>
+          <tr><td class="mono">POST /api/agent/strands</td><td>Strands SDK agent (Bedrock · Anthropic · OpenAI)</td></tr>
+          <tr><td class="mono">POST /api/agent/pydantic</td><td>Pydantic AI agent (structured output)</td></tr>
+          <tr><td class="mono">GET /api/joe-reports</td><td>Pre-processed Joe Sandbox report catalog</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-divider"></div>
+  </section>
+
+  <footer>
+    <span>Fathom pipeline · 15 stages · 3 LLM inference phases · extracted from project_map.txt</span>
+    <span>FAST-NUCES Islamabad</span>
+  </footer>
+</main>
+
+<!-- ●●●●●●●●●●●●●●●●●●●●●● SCRIPTS ●●●●●●●●●●●●●●●●●●●●●● -->
+<script>
+  function setActive(view) {
+    document.getElementById('view-home').classList.toggle('active', view === 'home');
+    document.getElementById('view-pipeline').classList.toggle('active', view === 'pipeline');
+    document.querySelectorAll('.nav-link[data-view]').forEach(el => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+  }
+
+  function nav(view, e) {
+    if (e) e.preventDefault();
+    history.replaceState(null, '', '#/' + view);
+    setActive(view);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  function route() {
+    const hash = location.hash || '#/home';
+    const view = hash.startsWith('#/pipeline') ? 'pipeline' : 'home';
+    setActive(view);
+    const anchor = hash.match(/#\/[^#]*#(.+)$/);
+    if (anchor) {
+      const el = document.getElementById(anchor[1]);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
+  }
+  window.addEventListener('hashchange', route);
+  document.addEventListener('DOMContentLoaded', () => {
+    route();
+    if (window.lucide) lucide.createIcons();
+    initCharts();
+  });
+
+  // ●●● CHART.JS INITIALISATION ●●●
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+  function chartTheme(){
+    const light = document.body.classList.contains('light-theme');
+    return {
+      text:   cssVar('--text-secondary') || '#a7b5ac',
+      muted:  cssVar('--text-muted') || '#6b8478',
+      grid:   light ? 'rgba(5,46,31,0.08)' : 'rgba(236,253,245,0.06)',
+      border: cssVar('--border') || '#1d3a2e',
+      // green scale — lightest → darkest (from --g1..--g7)
+      g1: cssVar('--g1') || '#a7f3d0',
+      g2: cssVar('--g2') || '#6ee7b7',
+      g3: cssVar('--g3') || '#34d399',
+      g4: cssVar('--g4') || '#10b981',
+      g5: cssVar('--g5') || '#059669',
+      g6: cssVar('--g6') || '#047857',
+      g7: cssVar('--g7') || '#065f46',
+      neutral: light ? '#94a3b8' : '#6b8478',
+      primary: cssVar('--text-primary') || '#ecfdf5',
+      font:   "'Inter', sans-serif",
+      mono:   "'JetBrains Mono', monospace"
+    };
+  }
+
+  let _charts = {};
+  function initCharts(){
+    if (!window.Chart) return;
+    const t = chartTheme();
+
+    Chart.defaults.color = t.text;
+    Chart.defaults.font.family = t.font;
+    Chart.defaults.borderColor = t.border;
+
+    const commonScales = {
+      y: {
+        beginAtZero: true,
+        grid: { color: t.grid, drawBorder: false },
+        ticks: { color: t.muted, font: { family: t.mono, size: 11 } },
+        border: { display: false }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: t.text, font: { family: t.font, size: 12, weight: '500' } },
+        border: { color: t.border }
+      }
+    };
+    const legendOpts = {
+      labels: { color: t.text, font: { family: t.font, size: 12 }, boxWidth: 12, boxHeight: 12, padding: 14 }
+    };
+
+    // destroy existing (for re-init on theme change)
+    Object.values(_charts).forEach(c => c && c.destroy());
+    _charts = {};
+
+    // 1 · Frontier comparison — grouped bars (green scale only)
+    const c1 = document.getElementById('chartFrontier');
+    if (c1) _charts.frontier = new Chart(c1, {
+      type: 'bar',
+      data: {
+        labels: ['CyberMetric-80', 'MMLU Computer Security', 'MMLU Security Studies'],
+        datasets: [
+          { label: 'Fathom (unified-v2)', data: [91.25, 79.0, 64.0], backgroundColor: t.g3,      borderRadius: 4 },
+          { label: 'GPT-4',               data: [87.0,  82.0, 74.0], backgroundColor: t.g5,      borderRadius: 4 },
+          { label: 'Base Mixtral-8×7B',   data: [82.5,  null, null], backgroundColor: t.g2,      borderRadius: 4 },
+          { label: 'GPT-3.5',             data: [67.0,  65.0, 60.0], backgroundColor: t.g6,      borderRadius: 4 },
+          { label: 'Llama-2-70B',         data: [57.0,  54.0, 48.0], backgroundColor: t.neutral, borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: legendOpts, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + (c.parsed.y ?? '—  ') + '%' } } },
+        scales: { ...commonScales, y: { ...commonScales.y, max: 100, ticks: { ...commonScales.y.ticks, callback: v => v + '%' } } }
+      }
+    });
+
+    // 2 · ATT&CK F1 progression — line
+    const c2 = document.getElementById('chartF1Progression');
+    if (c2) _charts.f1 = new Chart(c2, {
+      type: 'line',
+      data: {
+        labels: ['Run 4', 'Run 5', 'Run 6', 'Run 7'],
+        datasets: [
+          { label: 'Exact F1',  data: [0.083, 0.370, 0.534, 0.868], borderColor: t.g2, backgroundColor: t.g2 + '33', tension: 0.35, fill: true, pointRadius: 5, pointBackgroundColor: t.g2, borderWidth: 2.5 },
+          { label: 'Parent F1', data: [0.095, 0.429, 0.508, 0.841], borderColor: t.g4, backgroundColor: t.g4 + '33', tension: 0.35, fill: true, pointRadius: 5, pointBackgroundColor: t.g4, borderWidth: 2.5 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: legendOpts, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(3) } } },
+        scales: { ...commonScales, y: { ...commonScales.y, max: 1.0, ticks: { ...commonScales.y.ticks, stepSize: 0.2 } } }
+      }
+    });
+
+    // 3 · Sample breakdown — grouped bars
+    const c3 = document.getElementById('chartSamples');
+    if (c3) _charts.samples = new Chart(c3, {
+      type: 'bar',
+      data: {
+        labels: ['Emotet (S12)', 'Formbook (S15)', 'Dridex (S16)'],
+        datasets: [
+          { label: 'Exact F1',  data: [0.889, 0.714, 1.000], backgroundColor: t.g2, borderRadius: 4 },
+          { label: 'Parent F1', data: [0.857, 0.667, 1.000], backgroundColor: t.g4, borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: legendOpts, tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(3) } } },
+        scales: { ...commonScales, y: { ...commonScales.y, max: 1.0, ticks: { ...commonScales.y.ticks, stepSize: 0.2 } } }
+      }
+    });
+
+    // 4 · Per-expert — horizontal bars
+    const c4 = document.getElementById('chartExperts');
+    if (c4) _charts.experts = new Chart(c4, {
+      type: 'bar',
+      data: {
+        labels: ['E8 analyst', 'unified-v2', 'E3 network', 'E4 forensics', 'E6 detection', 'E7 reports', 'E9 CoT', 'E2 dynamic', 'E1 static', 'E5 threat-intel'],
+        datasets: [{
+          label: 'CyberMetric-80 accuracy (%)',
+          data: [91.25, 91.25, 90.00, 90.00, 88.75, 88.75, 87.50, 85.00, 83.75, 81.25],
+          backgroundColor: (ctx) => {
+            const v = ctx.parsed?.x ?? 0;
+            if (v >= 91) return t.g4;
+            if (v >= 88) return t.g3;
+            if (v >= 85) return t.g2;
+            return t.g1;
+          },
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.x.toFixed(2) + '%' } } },
+        scales: {
+          x: { beginAtZero: false, min: 70, max: 95, grid: { color: t.grid }, ticks: { color: t.muted, font: { family: t.mono, size: 11 }, callback: v => v + '%' }, border: { display: false } },
+          y: { grid: { display: false }, ticks: { color: t.text, font: { family: t.mono, size: 11.5 } }, border: { color: t.border } }
+        }
+      }
+    });
+  }
+
+  // re-init charts on theme change
+  const _origToggle = toggleTheme;
+  toggleTheme = function(){ _origToggle(); setTimeout(initCharts, 50); };
+
+  // nav scroll state
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    navbar.classList.toggle('scrolled', window.scrollY > 10);
+  });
+
+  // theme toggle (persisted)
+  function toggleTheme() {
+    const isLight = document.body.classList.toggle('light-theme');
+    document.getElementById('themeLabel').textContent = isLight ? 'Dark' : 'Light';
+    try { localStorage.setItem('fathom-theme', isLight ? 'light' : 'dark'); } catch(e) {}
+  }
+  try {
+    if (localStorage.getItem('fathom-theme') === 'light') {
+      document.body.classList.add('light-theme');
+      document.getElementById('themeLabel').textContent = 'Dark';
+    }
+  } catch(e) {}
+
+  // Scroll-reveal observer
+  const revealEls = document.querySelectorAll('.reveal');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  revealEls.forEach(el => revealObserver.observe(el));
+</script>
+</body>
+</html>

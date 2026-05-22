@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support Triage Pipeline — Deep Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+/* ─────────────────────────── BASE  ─────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#05140f; --bg-card:#0c1f18; --bg-card-hover:#112a20; --bg-elevated:#143128;
+  --border:#1d3a2e; --border-hover:#2a5243;
+  --text-primary:#ecfdf5; --text-secondary:#a7b5ac; --text-muted:#6b8478;
+  --accent:#34d399; --accent-dim:rgba(52,211,153,0.10);
+  --ok:#34d399; --info:#6ee7b7; --warn:#a3e635; --bad:#fb7185;
+  --radius:14px; --radius-sm:10px; --radius-xs:6px;
+  --mono:'JetBrains Mono','Consolas',monospace;
+  --sans:'Inter',-apple-system,sans-serif;
+  --display:'Space Grotesk','Inter',sans-serif;
+  --trans:all .3s cubic-bezier(.4,0,.2,1);
+}
+html{font-size:93%;scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text-primary);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+/* ─────────── LIGHT THEME (palette mirrors report/index.html) ─────────── */
+body.light-theme{
+  --bg:#f6fbf8; --bg-card:#ffffff; --bg-card-hover:#f0f9f3; --bg-elevated:#e9f6ee;
+  --border:#d9ebe0; --border-hover:#b9d9c5;
+  --text-primary:#052e1f; --text-secondary:#38614f; --text-muted:#7d9c8a;
+  --accent:#059669; --accent-dim:rgba(5,150,105,0.08);
+  --ok:#059669; --info:#10b981; --warn:#65a30d; --bad:#be123c;
+}
+body.light-theme .grid-bg{background-image:linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px)}
+body.light-theme .orb{opacity:0.06}
+body.light-theme nav{background:rgba(246,251,248,0.88);border-color:rgba(0,0,0,0.08)}
+body.light-theme ::-webkit-scrollbar-thumb{background:#ccc}
+body.light-theme .hero h1 .gradient{background:linear-gradient(120deg,#065f46 0%,#047857 35%,#059669 65%,#10b981 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+body.light-theme .nav-logo .mk{background:linear-gradient(135deg,#10b981,#065f46);color:#ffffff}
+body.light-theme table.t tbody td{border-bottom:1px solid rgba(0,0,0,0.05)}
+
+/* Diagram-internal palette for light theme — keeps hues but boosts contrast on white */
+body.light-theme .diagram{
+  --d-ok:#0d9488;   --d-ok-dim:rgba(13,148,136,0.10);
+  --d-info:#4f46e5; --d-info-dim:rgba(79,70,229,0.10);
+  --d-warn:#b45309; --d-warn-dim:rgba(180,83,9,0.10);
+  --d-pink:#be185d; --d-pink-dim:rgba(190,24,93,0.10);
+  --d-surface:#eef2f7; --d-surface-soft:#ffffff; --d-border:#e2e8f0; --d-border-hi:#cbd5e1;
+  --d-text:#0f172a; --d-text-2:#475569; --d-text-3:#64748b;
+}
+/* Override inline SVG text colors that were hardcoded for dark mode */
+body.light-theme .diagram text[style*="#5eead4"]{fill:#0d9488 !important}
+body.light-theme .diagram text[style*="#818cf8"]{fill:#4338ca !important}
+body.light-theme .diagram text[style*="#fbbf24"]{fill:#b45309 !important}
+body.light-theme .diagram text[style*="#f472b6"]{fill:#be185d !important}
+body.light-theme .diagram text[style*="#fb7185"]{fill:#be123c !important}
+
+body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+.grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+.orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(100px);opacity:0.12;z-index:0}
+.orb-1{width:600px;height:600px;background:radial-gradient(circle,#34d399 0%,transparent 70%);top:-200px;right:-150px}
+.orb-2{width:500px;height:500px;background:radial-gradient(circle,#10b981 0%,transparent 70%);bottom:200px;left:-200px}
+.orb-3{width:400px;height:400px;background:radial-gradient(circle,#6ee7b7 0%,transparent 70%);top:50%;right:10%}
+
+/* ─────────────────────────── NAV  ─────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,10,0.8);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--border)}
+.nav-inner{max-width:1400px;margin:0 auto;padding:0 40px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px;letter-spacing:-.5px;text-decoration:none;color:var(--text-primary)}
+.nav-logo .mk{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#34d399,#065f46);display:inline-flex;align-items:center;justify-content:center;color:#05140f;font-family:var(--mono);font-weight:900;font-size:13px}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-link{padding:8px 16px;border-radius:var(--radius-xs);font-size:13px;font-weight:500;color:var(--text-secondary);text-decoration:none;letter-spacing:-.2px;transition:var(--trans)}
+.nav-link:hover{color:var(--text-primary);background:var(--accent-dim)}
+.btn-ghost{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--accent-dim);color:var(--text-secondary);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;text-decoration:none}
+
+/* theme toggle button */
+.theme-toggle{margin-left:8px;width:34px;height:34px;border-radius:8px;border:1px solid var(--border);background:var(--accent-dim);color:var(--text-secondary);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:var(--trans);padding:0}
+.theme-toggle:hover{color:var(--text-primary);border-color:var(--border-hover);background:var(--bg-card-hover)}
+.theme-toggle svg{width:16px;height:16px;stroke-width:2}
+.theme-toggle .icon-sun{display:none}
+.theme-toggle .icon-moon{display:block}
+body.light-theme .theme-toggle .icon-sun{display:block}
+body.light-theme .theme-toggle .icon-moon{display:none}
+
+/* ─────────────────────────── HERO  ─────────────────────────── */
+.hero{padding:140px 40px 60px;max-width:1400px;margin:0 auto;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--border);border-radius:100px;font-size:12px;font-family:var(--mono);color:var(--text-secondary);margin-bottom:28px}
+.hero-badge .dot{width:6px;height:6px;background:var(--ok);border-radius:50%;box-shadow:0 0 8px var(--ok)}
+.hero h1{font-family:var(--display);font-size:clamp(40px,6vw,72px);font-weight:700;letter-spacing:-2.5px;line-height:1.02;margin-bottom:20px;color:var(--text-primary)}
+.hero h1 .gradient{background:linear-gradient(120deg,#ecfdf5 0%,#a7f3d0 25%,#6ee7b7 55%,#34d399 85%,#10b981 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p.lede{font-size:17px;color:var(--text-secondary);max-width:760px;line-height:1.7}
+.hero-meta{display:flex;flex-wrap:wrap;gap:20px 36px;margin-top:32px;padding-top:28px;border-top:1px solid var(--border)}
+.hero-meta-item{display:flex;flex-direction:column;gap:4px;min-width:140px}
+.hero-meta-key{font-size:10px;color:var(--text-muted);font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.hero-meta-val{font-size:14px;color:var(--text-primary);font-weight:500}
+.hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:40px}
+.hero-stat{padding:22px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card)}
+.hero-stat-value{font-size:30px;font-weight:900;font-family:var(--mono);letter-spacing:-1.5px;color:var(--text-primary)}
+.hero-stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-top:6px}
+.hero-stat-sub{font-size:11px;color:var(--text-secondary);margin-top:8px;font-family:var(--mono)}
+@media(max-width:860px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ─────────────────────────── SECTION  ─────────────────────────── */
+.section{max-width:1400px;margin:0 auto;padding:70px 40px;position:relative}
+.sec-head{margin-bottom:32px}
+.sec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;font-family:var(--mono);color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-label .tick{display:inline-block;width:28px;height:1px;background:var(--text-muted)}
+.sec-heading{font-family:var(--display);font-size:clamp(28px,3.2vw,44px);font-weight:700;letter-spacing:-1.2px;line-height:1.08;color:var(--text-primary);margin-bottom:16px}
+.sec-sub{font-size:15px;color:var(--text-secondary);max-width:780px;line-height:1.7}
+
+/* ─────────────────────────── CARDS  ─────────────────────────── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:var(--trans)}
+.card:hover{border-color:var(--border-hover);background:var(--bg-card-hover)}
+.card-h{font-size:18px;font-weight:700;letter-spacing:-.3px;margin-bottom:10px;color:var(--text-primary)}
+.card-p{font-size:14px;color:var(--text-secondary);line-height:1.65}
+.card-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.card-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:980px){.card-grid-3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.card-grid-2,.card-grid-3{grid-template-columns:1fr}}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 20px;font-size:14px}
+.kv dt{color:var(--text-muted);font-family:var(--mono);font-size:12px;padding-top:2px}
+.kv dd{color:var(--text-primary)}
+
+/* ─────────────────────────── PIPELINE STRIP  ─────────────────────────── */
+.pipemap{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card)}
+.pipebox{min-width:70px;padding:14px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text-secondary);text-align:center;line-height:1.3;transition:var(--trans)}
+.pipebox:hover{border-color:var(--border-hover);color:var(--text-primary)}
+.pipebox .n{font-size:9px;color:var(--text-muted);letter-spacing:.12em}
+.pipebox.fx{border-color:rgba(52,211,153,.30);color:var(--text-primary);background:rgba(52,211,153,0.05)}
+.pipebox.human{border-color:rgba(163,230,53,.30);color:var(--text-primary);background:rgba(163,230,53,0.05)}
+.pipebox.final{border-color:rgba(110,231,183,.30);color:var(--text-primary);background:rgba(110,231,183,0.05)}
+.pipebox svg{width:16px;height:16px}
+@media(max-width:900px){.pipemap{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.arch-legend{display:flex;flex-wrap:wrap;gap:20px;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+.arch-legend .lg{display:flex;align-items:center;gap:8px}
+.arch-legend .sw{width:10px;height:10px;border-radius:2px;background:var(--text-muted)}
+
+/* ─────────────────────────── DIAGRAM CONTAINER  ─────────────────────────── */
+.diagram{
+  --d-ok:#5eead4;   --d-ok-dim:rgba(94,234,212,0.12);
+  --d-info:#818cf8; --d-info-dim:rgba(129,140,248,0.14);
+  --d-warn:#fbbf24; --d-warn-dim:rgba(251,191,36,0.14);
+  --d-pink:#f472b6; --d-pink-dim:rgba(244,114,182,0.14);
+  --d-surface:#1a2440; --d-surface-soft:#121a2e; --d-border:#222b42; --d-border-hi:#2e3a56;
+  --d-text:#f1f5f9; --d-text-2:#94a3b8; --d-text-3:#64748b;
+  background:var(--d-surface-soft);border:1px solid var(--d-border);border-radius:var(--radius);padding:30px;overflow:hidden;position:relative
+}
+.diagram svg{width:100%;height:auto;display:block;max-width:1240px;margin:0 auto}
+.diagram .node-box{fill:var(--d-surface);stroke:var(--d-border-hi);stroke-width:1.5}
+.diagram .node-box.ok{fill:var(--d-ok-dim);stroke:var(--d-ok);stroke-width:1.5}
+.diagram .node-box.info{fill:var(--d-info-dim);stroke:var(--d-info);stroke-width:1.5}
+.diagram .node-box.warn{fill:var(--d-warn-dim);stroke:var(--d-warn);stroke-width:1.5}
+.diagram .node-box.pink{fill:var(--d-pink-dim);stroke:var(--d-pink);stroke-width:1.5}
+.diagram .node-box.muted{fill:var(--d-surface-soft);stroke:var(--d-border)}
+.diagram .node-t{fill:var(--d-text);font-family:var(--sans);font-weight:700;font-size:13px}
+.diagram .node-st{fill:var(--d-text-3);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.diagram .node-p{fill:var(--d-text-2);font-family:var(--sans);font-size:11px}
+.diagram .node-mono{fill:var(--d-text);font-family:var(--mono);font-size:11px}
+.diagram .flow-line{stroke:var(--d-border-hi);stroke-width:1.5;fill:none}
+.diagram .flow-line.ok{stroke:var(--d-ok);opacity:.85}
+.diagram .flow-line.info{stroke:var(--d-info);opacity:.85}
+.diagram .flow-line.warn{stroke:var(--d-warn);opacity:.85}
+.diagram .flow-line.pink{stroke:var(--d-pink);opacity:.85}
+.diagram .flow-line.dashed{stroke-dasharray:4 4;opacity:.6}
+.diagram .phase-label{fill:var(--d-text-3);font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+.diagram .phase-band{fill:none;stroke:var(--d-border);stroke-width:1;stroke-dasharray:3 3}
+.diagram .decision{fill:var(--d-surface-soft);stroke:var(--d-warn);stroke-width:1.5}
+.diagram .chip{fill:var(--d-surface);stroke:var(--d-border-hi);stroke-width:1}
+.diagram .chip.active{fill:var(--d-ok-dim);stroke:var(--d-ok)}
+.diagram .chip.warn{fill:var(--d-warn-dim);stroke:var(--d-warn)}
+.diagram .chip-t{fill:var(--d-text);font-family:var(--mono);font-size:9px;font-weight:600}
+.diagram-legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-secondary)}
+.diagram-legend .lg{display:flex;align-items:center;gap:8px}
+.diagram-legend .sw{width:12px;height:12px;border-radius:3px;border:1px solid var(--border-hover)}
+
+/* ─────────────────────────── TABLES / CODE  ─────────────────────────── */
+.table-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg-card)}
+table.t{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+table.t thead th{padding:14px 18px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card);font-family:var(--mono)}
+table.t tbody td{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text-secondary);vertical-align:top}
+table.t tbody tr:last-child td{border-bottom:none}
+table.t tbody tr:hover td{background:var(--accent-dim)}
+table.t td.mono{font-family:var(--mono);color:var(--text-primary);font-weight:500}
+table.t td.num{font-family:var(--mono);color:var(--text-primary);font-weight:600;text-align:right}
+table.t td.strong{color:var(--text-primary);font-weight:600}
+
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text-secondary);background:var(--accent-dim)}
+.tag.ok{color:var(--text-primary);border-color:var(--ok)}
+.tag.warn{color:var(--text-primary);border-color:#a3e635}
+.tag.pink{color:var(--text-primary);border-color:#f472b6}
+
+pre.code{font-family:var(--mono);font-size:12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;color:var(--text-primary);overflow-x:auto;line-height:1.55;white-space:pre}
+code.k{font-family:var(--mono);font-size:12.5px;color:var(--text-primary);background:var(--bg-elevated);padding:1px 6px;border-radius:3px;border:1px solid var(--border)}
+
+/* ─────────────────────────── ICONS  ─────────────────────────── */
+.ico{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:18px;height:18px}
+.ico svg,svg.lucide{stroke-width:1.75;width:100%;height:100%;display:block}
+.ico-badge{width:40px;height:40px;border:1px solid var(--border);border-radius:10px;background:var(--bg-elevated);color:var(--text-primary);display:inline-flex;align-items:center;justify-content:center}
+.ico-badge svg{width:18px;height:18px}
+.card-ih{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.card-ih .t{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.12em;font-family:var(--mono)}
+
+/* file row */
+.icon-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.icon-row:last-child{border-bottom:none}
+.icon-row .txt{flex:1;min-width:0;font-size:13.5px;line-height:1.6;color:var(--text-secondary)}
+.icon-row .txt b{color:var(--text-primary);font-weight:600}
+.icon-row .ico-sm{width:16px;height:16px;color:var(--text-secondary);margin-top:1px}
+.icon-row .ico-sm svg{width:16px;height:16px}
+
+footer{max-width:1400px;margin:0 auto;padding:40px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+[id]{scroll-margin-top:84px}
+</style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- ────────────  NAV  ──────────── -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <span class="mk">T</span>
+        <span>Triage Pipeline · Architecture</span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview"  class="nav-link">Overview</a>
+        <a href="#stages"    class="nav-link">Stages</a>
+        <a href="#llm"       class="nav-link">LLM Path</a>
+        <a href="#data"      class="nav-link">Data Flow</a>
+        <a href="#validator" class="nav-link">Validator</a>
+        <a href="#run"       class="nav-link">Run It</a>
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme" title="Toggle theme">
+          <span class="icon-moon"><i data-lucide="moon"></i></span>
+          <span class="icon-sun"><i data-lucide="sun"></i></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ────────────  HERO  ──────────── -->
+  <section class="hero">
+    <div class="hero-badge"><span class="dot"></span>STDLIB + OPTIONAL KIMI-K2.6 · STATUS: ALL CHECKS PASS</div>
+    <h1>A 7-stage <span class="gradient">triage pipeline</span><br/>with a real Kimi-K2.6 inference path and a deterministic fallback.</h1>
+    <p class="lede">
+      Customer support tickets are loaded from <code class="k">tickets.json</code>, deterministically normalized,
+      classified by a single big prompt sent to the Moonshot Kimi-K2.6 API
+      (OpenAI-compatible), handed to a human reviewer for override, and finally
+      routed into per-team queues. A separate <code class="k">validate.py</code>
+      cross-checks every artifact against <code class="k">triage_config.json</code>.
+    </p>
+
+    <div class="hero-meta">
+      <div class="hero-meta-item"><div class="hero-meta-key">Entrypoint</div><div class="hero-meta-val">triage_pipeline.py · main()</div></div>
+      <div class="hero-meta-item"><div class="hero-meta-key">Validator</div><div class="hero-meta-val">validate.py · 5-check suite</div></div>
+      <div class="hero-meta-item"><div class="hero-meta-key">Real LLM</div><div class="hero-meta-val">kimi-k2.6 @ api.moonshot.ai/v1</div></div>
+      <div class="hero-meta-item"><div class="hero-meta-key">Fallback</div><div class="hero-meta-val">_heuristic_triage() · pure stdlib</div></div>
+      <div class="hero-meta-item"><div class="hero-meta-key">Runtime</div><div class="hero-meta-val">Python 3.13 · Windows / PowerShell</div></div>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-value">7</div>
+        <div class="hero-stat-label">Stages enforced</div>
+        <div class="hero-stat-sub">INIT → RESULTS_FINALISED</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">1</div>
+        <div class="hero-stat-label">LLM call per run</div>
+        <div class="hero-stat-sub">Batched prompt · 3,175 chars</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">9</div>
+        <div class="hero-stat-label">Artifacts written</div>
+        <div class="hero-stat-sub">JSON · JSONL · Markdown</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">0</div>
+        <div class="hero-stat-label">External deps required</div>
+        <div class="hero-stat-sub">openai / dotenv only optional</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 01 · OVERVIEW
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="overview">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="compass"></i></span><span class="tick"></span>01 &nbsp;/&nbsp; What this system does</div>
+      <h2 class="sec-heading">Seven steps. Run in order. One after the other.</h2>
+      <p class="sec-sub">
+        The program runs <b>7 steps</b>, top to bottom. Each step finishes its job, saves the result
+        to a file, and then the next step picks up from there. You can't skip a step — they always
+        run in the same order. That's it.
+      </p>
+    </div>
+
+    <!-- Pipeline strip -->
+    <div class="pipemap">
+      <div class="pipebox"><i data-lucide="power"></i><div class="n">01</div><div>INIT</div></div>
+      <div class="pipebox"><i data-lucide="file-input"></i><div class="n">02</div><div>INPUTS<br/>LOADED</div></div>
+      <div class="pipebox"><i data-lucide="ruler"></i><div class="n">03</div><div>TICKETS<br/>NORMALIZED</div></div>
+      <div class="pipebox fx"><i data-lucide="brain"></i><div class="n">04</div><div>TRIAGE<br/>PREDICTED</div></div>
+      <div class="pipebox human"><i data-lucide="user-check"></i><div class="n">05</div><div>HUMAN<br/>REVIEW</div></div>
+      <div class="pipebox final"><i data-lucide="git-merge"></i><div class="n">06</div><div>FINAL<br/>QUEUE</div></div>
+      <div class="pipebox"><i data-lucide="check-check"></i><div class="n">07</div><div>RESULTS<br/>FINALISED</div></div>
+    </div>
+    <div class="arch-legend">
+      <div class="lg"><span class="sw" style="background:#555"></span>Deterministic stage (no LLM)</div>
+      <div class="lg"><span class="sw" style="background:#5eead4"></span>LLM inference (real or fallback)</div>
+      <div class="lg"><span class="sw" style="background:#a3e635"></span>Human-in-the-loop</div>
+      <div class="lg"><span class="sw" style="background:#6ee7b7"></span>Persistence &amp; routing</div>
+    </div>
+
+    <div class="card-grid-3" style="margin-top:24px">
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico-badge"><i data-lucide="layers"></i></div>
+          <div><div class="t">Idea 1</div><div class="card-h">The config file is the boss</div></div>
+        </div>
+        <p class="card-p">
+          The AI can suggest anything, but we don't just take its word for it.
+          Every answer is double-checked against <code class="k">triage_config.json</code>.
+          If the AI picks something not on the list, we replace it with a safe default.
+          <b>The config decides where tickets go — not the AI.</b>
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico-badge"><i data-lucide="git-branch"></i></div>
+          <div><div class="t">Idea 2</div><div class="card-h">Try the AI · fall back if it fails</div></div>
+        </div>
+        <p class="card-p">
+          First we try to call the real AI (Kimi-K2.6). If the API key is missing,
+          the internet is down, or anything goes wrong, the program quietly switches
+          to a simple keyword-matcher. <b>It never crashes — you always get an answer.</b>
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico-badge"><i data-lucide="shield-check"></i></div>
+          <div><div class="t">Idea 3</div><div class="card-h">A separate file checks the work</div></div>
+        </div>
+        <p class="card-p">
+          After the pipeline finishes, you run <code class="k">validate.py</code>.
+          It opens every file the pipeline wrote and confirms each one is correct.
+          If everything's good, it prints <code class="k">✅ VALIDATION PASSED</code>.
+          <b>If anything is off, it tells you exactly what.</b>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 02 · STAGE-BY-STAGE DEEP DIAGRAM
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="stages">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="route"></i></span><span class="tick"></span>02 &nbsp;/&nbsp; Stage-by-stage flow</div>
+      <h2 class="sec-heading">What runs at each stage, what it reads, what it writes.</h2>
+      <p class="sec-sub">
+        Top band = inputs from disk. Middle band = methods on the <code class="k">TriagePipeline</code>
+        class. Bottom band = artifacts written to the working directory. Dotted return arrows show
+        the human reviewer feeding overrides back into the final-queue stage.
+      </p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 1240 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline stage diagram">
+        <defs>
+          <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+          <marker id="a-ok" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/></marker>
+          <marker id="a-info" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/></marker>
+          <marker id="a-warn" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/></marker>
+          <marker id="a-pink" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f472b6"/></marker>
+        </defs>
+
+        <!-- Phase bands -->
+        <rect class="phase-band" x="20"  y="40"  width="1200" height="100" rx="12" ry="12"/>
+        <rect class="phase-band" x="20"  y="170" width="1200" height="220" rx="12" ry="12"/>
+        <rect class="phase-band" x="20"  y="420" width="1200" height="150" rx="12" ry="12"/>
+
+        <text class="phase-label" x="40"   y="32">Disk inputs</text>
+        <text class="phase-label" x="40"   y="162">TriagePipeline · methods</text>
+        <text class="phase-label" x="40"   y="412">Disk outputs (per stage)</text>
+
+        <!-- ────── INPUTS ────── -->
+        <g>
+          <rect class="node-box muted" x="40"  y="60"  width="200" height="60" rx="10"/>
+          <text class="node-st"   x="58"  y="80">read</text>
+          <text class="node-mono" x="58"  y="100">tickets.json</text>
+          <text class="node-p"    x="58"  y="115" style="font-size:10px">4 ticket objects</text>
+        </g>
+        <g>
+          <rect class="node-box muted" x="260" y="60"  width="200" height="60" rx="10"/>
+          <text class="node-st"   x="278" y="80">read</text>
+          <text class="node-mono" x="278" y="100">triage_config.json</text>
+          <text class="node-p"    x="278" y="115" style="font-size:10px">categories · priorities · routing</text>
+        </g>
+        <g>
+          <rect class="node-box muted" x="480" y="60"  width="200" height="60" rx="10"/>
+          <text class="node-st"   x="498" y="80">read</text>
+          <text class="node-mono" x="498" y="100">.env</text>
+          <text class="node-p"    x="498" y="115" style="font-size:10px">KIMI_API_KEY · LLM_MODEL</text>
+        </g>
+        <g>
+          <rect class="node-box muted" x="700" y="60"  width="240" height="60" rx="10"/>
+          <text class="node-st"   x="718" y="80">stdin</text>
+          <text class="node-mono" x="718" y="100">human reviewer</text>
+          <text class="node-p"    x="718" y="115" style="font-size:10px">ticket_id,category,priority</text>
+        </g>
+        <g>
+          <rect class="node-box muted" x="960" y="60"  width="240" height="60" rx="10"/>
+          <text class="node-st"   x="978" y="80">env</text>
+          <text class="node-mono" x="978" y="100">LLM_BASE_URL</text>
+          <text class="node-p"    x="978" y="115" style="font-size:10px">api.moonshot.ai/v1 (default)</text>
+        </g>
+
+        <!-- ────── METHODS BAND (7 stages) ────── -->
+        <!-- 01 INIT -->
+        <g>
+          <rect class="node-box" x="40" y="200" width="160" height="170" rx="10"/>
+          <text class="node-st" x="56" y="220">stage 01</text>
+          <text class="node-t"  x="56" y="240">INIT</text>
+          <text class="node-p"  x="56" y="260">__init__()</text>
+          <text class="node-p"  x="56" y="276">banner("INIT")</text>
+          <text class="node-p"  x="56" y="296" style="fill:#64748b">prints === border</text>
+          <text class="node-p"  x="56" y="312" style="fill:#64748b">sets self.stage</text>
+          <text class="node-p"  x="56" y="328" style="fill:#64748b">_llm_mode="simulated"</text>
+          <text class="node-p"  x="56" y="350" style="font-size:10px">no I/O</text>
+        </g>
+
+        <!-- 02 INPUTS_LOADED -->
+        <g>
+          <rect class="node-box ok" x="215" y="200" width="160" height="170" rx="10"/>
+          <text class="node-st" x="231" y="220" style="fill:#5eead4">stage 02</text>
+          <text class="node-t"  x="231" y="240">INPUTS_LOADED</text>
+          <text class="node-p"  x="231" y="260">load_inputs()</text>
+          <text class="node-p"  x="231" y="276">read_json(...)</text>
+          <text class="node-p"  x="231" y="298" style="font-size:10px">loads tickets +</text>
+          <text class="node-p"  x="231" y="312" style="font-size:10px">config into memory</text>
+          <text class="node-p"  x="231" y="334" style="font-size:10px">echoes allowed_</text>
+          <text class="node-p"  x="231" y="348" style="font-size:10px">categories &amp; priorities</text>
+        </g>
+
+        <!-- 03 TICKETS_NORMALIZED -->
+        <g>
+          <rect class="node-box ok" x="390" y="200" width="160" height="170" rx="10"/>
+          <text class="node-st" x="406" y="220" style="fill:#5eead4">stage 03</text>
+          <text class="node-t"  x="406" y="240">NORMALIZED</text>
+          <text class="node-p"  x="406" y="260">normalize_tickets()</text>
+          <text class="node-p"  x="406" y="278" style="font-size:10px">pure python, no LLM</text>
+          <text class="node-p"  x="406" y="298" style="font-size:10px">adds text_for_model =</text>
+          <text class="node-p"  x="406" y="312" style="font-size:10px">"Subject: ...\nMessage: ..."</text>
+          <text class="node-p"  x="406" y="332" style="font-size:10px">adds char_count =</text>
+          <text class="node-p"  x="406" y="346" style="font-size:10px">len(text_for_model)</text>
+        </g>
+
+        <!-- 04 TRIAGE_PREDICTED -->
+        <g>
+          <rect class="node-box info" x="565" y="200" width="170" height="170" rx="10"/>
+          <text class="node-st" x="581" y="220" style="fill:#818cf8">stage 04 · LLM</text>
+          <text class="node-t"  x="581" y="240">PREDICTED</text>
+          <text class="node-p"  x="581" y="260">predict_triage()</text>
+          <text class="node-p"  x="581" y="276" style="font-size:10px">_build_triage_prompt</text>
+          <text class="node-p"  x="581" y="290" style="font-size:10px">_simulate_llm_triage</text>
+          <text class="node-p"  x="581" y="306" style="font-size:10px">→ _call_real_llm OR</text>
+          <text class="node-p"  x="581" y="320" style="font-size:10px">  _heuristic_triage</text>
+          <text class="node-p"  x="581" y="338" style="font-size:10px">_enforce_config()</text>
+          <text class="node-p"  x="581" y="354" style="font-size:10px">_compute_escalations</text>
+        </g>
+
+        <!-- 05 HUMAN_REVIEW -->
+        <g>
+          <rect class="node-box warn" x="750" y="200" width="160" height="170" rx="10"/>
+          <text class="node-st" x="766" y="220" style="fill:#fbbf24">stage 05</text>
+          <text class="node-t"  x="766" y="240">HUMAN_REVIEW</text>
+          <text class="node-p"  x="766" y="260">human_review()</text>
+          <text class="node-p"  x="766" y="278" style="font-size:10px">prints prediction table</text>
+          <text class="node-p"  x="766" y="294" style="font-size:10px">while True: input()</text>
+          <text class="node-p"  x="766" y="310" style="font-size:10px">validates each line</text>
+          <text class="node-p"  x="766" y="328" style="font-size:10px">records {old_*, new_*}</text>
+          <text class="node-p"  x="766" y="346" style="font-size:10px">stops on empty line</text>
+        </g>
+
+        <!-- 06 FINAL_QUEUE -->
+        <g>
+          <rect class="node-box pink" x="925" y="200" width="160" height="170" rx="10"/>
+          <text class="node-st" x="941" y="220" style="fill:#f472b6">stage 06</text>
+          <text class="node-t"  x="941" y="240">FINAL_QUEUE</text>
+          <text class="node-p"  x="941" y="260">generate_final_queue()</text>
+          <text class="node-p"  x="941" y="278" style="font-size:10px">apply overrides</text>
+          <text class="node-p"  x="941" y="294" style="font-size:10px">rederive route_to from</text>
+          <text class="node-p"  x="941" y="308" style="font-size:10px">routing_rules[final_cat]</text>
+          <text class="node-p"  x="941" y="328" style="font-size:10px">set was_overridden bool</text>
+          <text class="node-p"  x="941" y="346" style="font-size:10px">_write_summary()</text>
+        </g>
+
+        <!-- 07 RESULTS_FINALISED -->
+        <g>
+          <rect class="node-box" x="1100" y="200" width="120" height="170" rx="10"/>
+          <text class="node-st" x="1116" y="220">stage 07</text>
+          <text class="node-t"  x="1116" y="240" style="font-size:12px">FINALISED</text>
+          <text class="node-p"  x="1116" y="262">finalise()</text>
+          <text class="node-p"  x="1116" y="282" style="font-size:10px">prints artifact</text>
+          <text class="node-p"  x="1116" y="296" style="font-size:10px">manifest, exits 0</text>
+        </g>
+
+        <!-- ────── ARTIFACT BAND ────── -->
+        <g>
+          <rect class="node-box muted" x="390" y="440" width="160" height="120" rx="10"/>
+          <text class="node-st"   x="406" y="460">writes</text>
+          <text class="node-mono" x="406" y="478">normalized_</text>
+          <text class="node-mono" x="406" y="492">tickets.json</text>
+          <text class="node-p"    x="406" y="514" style="font-size:10px">+ text_for_model</text>
+          <text class="node-p"    x="406" y="528" style="font-size:10px">+ char_count</text>
+        </g>
+
+        <g>
+          <rect class="node-box muted" x="565" y="440" width="170" height="120" rx="10"/>
+          <text class="node-st"   x="581" y="460">writes</text>
+          <text class="node-mono" x="581" y="478">triage_predictions.json</text>
+          <text class="node-mono" x="581" y="498">escalations.json</text>
+          <text class="node-mono" x="581" y="518">llm_calls.jsonl</text>
+          <text class="node-p"    x="581" y="540" style="font-size:10px">mode + model + hash</text>
+        </g>
+
+        <g>
+          <rect class="node-box muted" x="750" y="440" width="160" height="120" rx="10"/>
+          <text class="node-st"   x="766" y="460">writes</text>
+          <text class="node-mono" x="766" y="478">review_overrides.json</text>
+          <text class="node-p"    x="766" y="500" style="font-size:10px">ticket_id</text>
+          <text class="node-p"    x="766" y="514" style="font-size:10px">old_category · new_category</text>
+          <text class="node-p"    x="766" y="528" style="font-size:10px">old_priority · new_priority</text>
+        </g>
+
+        <g>
+          <rect class="node-box muted" x="925" y="440" width="160" height="120" rx="10"/>
+          <text class="node-st"   x="941" y="460">writes</text>
+          <text class="node-mono" x="941" y="478">final_queue.json</text>
+          <text class="node-mono" x="941" y="498">queue_summary.md</text>
+          <text class="node-p"    x="941" y="520" style="font-size:10px">final_route_to from</text>
+          <text class="node-p"    x="941" y="534" style="font-size:10px">routing_rules (rederived)</text>
+        </g>
+
+        <!-- ────── ARROWS ────── -->
+        <!-- inputs → INPUTS_LOADED -->
+        <path class="flow-line" d="M140 120 L 290 200" marker-end="url(#a)" stroke-width="1.5"/>
+        <path class="flow-line" d="M360 120 L 295 200" marker-end="url(#a)" stroke-width="1.5"/>
+        <!-- .env → predict_triage (LLM stage) -->
+        <path class="flow-line info dashed" d="M580 120 L 615 200" marker-end="url(#a-info)" stroke-width="1.5"/>
+        <path class="flow-line info dashed" d="M1080 120 L 700 200" marker-end="url(#a-info)" stroke-width="1.2"/>
+        <!-- stdin (human) → HUMAN_REVIEW -->
+        <path class="flow-line warn" d="M820 120 L 820 200" marker-end="url(#a-warn)" stroke-width="2"/>
+
+        <!-- horizontal stage flow -->
+        <path class="flow-line" d="M200 285 L 215 285" marker-end="url(#a)" stroke-width="2"/>
+        <path class="flow-line ok" d="M375 285 L 390 285" marker-end="url(#a-ok)" stroke-width="2"/>
+        <path class="flow-line ok" d="M550 285 L 565 285" marker-end="url(#a-ok)" stroke-width="2"/>
+        <path class="flow-line info" d="M735 285 L 750 285" marker-end="url(#a-info)" stroke-width="2"/>
+        <path class="flow-line warn" d="M910 285 L 925 285" marker-end="url(#a-warn)" stroke-width="2"/>
+        <path class="flow-line pink" d="M1085 285 L 1100 285" marker-end="url(#a-pink)" stroke-width="2"/>
+
+        <!-- method → artifact (downward) -->
+        <path class="flow-line" d="M470 370 L 470 440" marker-end="url(#a)" stroke-width="1.5"/>
+        <path class="flow-line info" d="M650 370 L 650 440" marker-end="url(#a-info)" stroke-width="1.5"/>
+        <path class="flow-line warn" d="M830 370 L 830 440" marker-end="url(#a-warn)" stroke-width="1.5"/>
+        <path class="flow-line pink" d="M1005 370 L 1005 440" marker-end="url(#a-pink)" stroke-width="1.5"/>
+
+        <!-- override feedback dotted line: review_overrides → final_queue stage -->
+        <path class="flow-line warn dashed" d="M830 440 Q 830 415 980 415 L 980 370" marker-end="url(#a-warn)" stroke-width="1.5"/>
+        <text class="node-mono" x="850" y="410" style="font-size:10px;fill:#fbbf24">overrides feed back</text>
+      </svg>
+
+      <div class="diagram-legend">
+        <div class="lg"><span class="sw" style="background:rgba(94,234,212,0.12);border-color:#5eead4"></span>Deterministic stage (no LLM)</div>
+        <div class="lg"><span class="sw" style="background:rgba(129,140,248,0.14);border-color:#818cf8"></span>LLM stage (Kimi-K2.6 or fallback)</div>
+        <div class="lg"><span class="sw" style="background:rgba(251,191,36,0.14);border-color:#fbbf24"></span>Human-in-the-loop</div>
+        <div class="lg"><span class="sw" style="background:rgba(244,114,182,0.14);border-color:#f472b6"></span>Final queue / routing</div>
+        <div class="lg" style="margin-left:auto"><span style="display:inline-block;width:20px;border-top:1.5px dashed #64748b;vertical-align:middle;margin-right:4px"></span>Optional / feedback path</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 03 · LLM INFERENCE DEEP DIAGRAM
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="llm">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="brain-circuit"></i></span><span class="tick"></span>03 &nbsp;/&nbsp; LLM Inference Architecture</div>
+      <h2 class="sec-heading">From config + tickets → one prompt → two possible execution paths.</h2>
+      <p class="sec-sub">
+        Left band assembles a single deterministic prompt with a SHA-256 fingerprint. Center band
+        is the decision point in <code class="k">_simulate_llm_triage()</code> — real Kimi call if
+        the API key is available, otherwise the offline heuristic. Right band normalizes the
+        response, enforces config-driven routing, and writes audit artifacts.
+      </p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 1240 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LLM inference architecture">
+        <defs>
+          <marker id="L-a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+          <marker id="L-a-ok" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/></marker>
+          <marker id="L-a-info" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/></marker>
+          <marker id="L-a-warn" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fbbf24"/></marker>
+        </defs>
+
+        <!-- Phase bands -->
+        <rect class="phase-band" x="20"   y="40" width="310" height="540" rx="12" ry="12"/>
+        <rect class="phase-band" x="350"  y="40" width="500" height="540" rx="12" ry="12"/>
+        <rect class="phase-band" x="870"  y="40" width="350" height="540" rx="12" ry="12"/>
+
+        <text class="phase-label" x="175" y="32" text-anchor="middle">Prompt assembly · deterministic</text>
+        <text class="phase-label" x="600" y="32" text-anchor="middle">Inference · _simulate_llm_triage</text>
+        <text class="phase-label" x="1045" y="32" text-anchor="middle">Post-processing · enforce · log</text>
+
+        <!-- ─── LEFT: prompt assembly ─── -->
+        <g>
+          <rect class="node-box" x="40" y="60" width="270" height="80" rx="10"/>
+          <text class="node-st" x="58" y="80">step 03 output</text>
+          <text class="node-t"  x="58" y="100" style="font-size:14px">normalized_tickets[]</text>
+          <text class="node-p"  x="58" y="118">subject + message + text_for_model</text>
+          <text class="node-p"  x="58" y="132">char_count · ticket_id · channel</text>
+        </g>
+
+        <g>
+          <rect class="node-box" x="40" y="160" width="270" height="80" rx="10"/>
+          <text class="node-st" x="58" y="180">read once</text>
+          <text class="node-t"  x="58" y="200" style="font-size:14px">triage_config.json</text>
+          <text class="node-p"  x="58" y="218">allowed_categories · allowed_priorities</text>
+          <text class="node-p"  x="58" y="232">routing_rules · reply_style.max_words</text>
+        </g>
+
+        <g>
+          <rect class="node-box ok" x="40" y="260" width="270" height="130" rx="10"/>
+          <text class="node-st" x="58" y="280" style="fill:#5eead4">_build_triage_prompt()</text>
+          <text class="node-t"  x="58" y="302" style="font-size:14px">single batched prompt</text>
+          <text class="node-p"  x="58" y="322">system: "You output ONLY valid JSON"</text>
+          <text class="node-p"  x="58" y="338">user: config + tickets + return contract</text>
+          <text class="node-mono" x="58" y="362" style="font-size:10px;fill:#5eead4">sha256[:16] = b5aac09e7c1f8ee3</text>
+          <text class="node-mono" x="58" y="378" style="font-size:10px;fill:#5eead4">3,175 chars · 4 ticket payload</text>
+        </g>
+
+        <g>
+          <rect class="node-box muted" x="40" y="410" width="270" height="160" rx="10"/>
+          <text class="node-st" x="58" y="430">required output shape</text>
+          <text class="node-mono" x="58" y="452" style="font-size:10.5px">[{</text>
+          <text class="node-mono" x="58" y="468" style="font-size:10.5px">  ticket_id,</text>
+          <text class="node-mono" x="58" y="484" style="font-size:10.5px">  category, priority,</text>
+          <text class="node-mono" x="58" y="500" style="font-size:10.5px">  confidence (0.0–1.0),</text>
+          <text class="node-mono" x="58" y="516" style="font-size:10.5px">  reason,</text>
+          <text class="node-mono" x="58" y="532" style="font-size:10.5px">  suggested_reply,</text>
+          <text class="node-mono" x="58" y="548" style="font-size:10.5px">  route_to</text>
+          <text class="node-mono" x="58" y="564" style="font-size:10.5px">}, ...]</text>
+        </g>
+
+        <!-- ─── CENTER: decision + two branches ─── -->
+        <!-- Decision diamond -->
+        <g>
+          <polygon class="decision" points="600,80 720,150 600,220 480,150"/>
+          <text class="node-mono" x="600" y="138" text-anchor="middle" style="fill:#fbbf24;font-size:11px">if openai_installed</text>
+          <text class="node-mono" x="600" y="155" text-anchor="middle" style="fill:#fbbf24;font-size:11px">AND LLM_API_KEY:</text>
+          <text class="node-p"    x="600" y="180" text-anchor="middle" style="font-size:10px">os.environ.get(</text>
+          <text class="node-p"    x="600" y="194" text-anchor="middle" style="font-size:10px">"KIMI_API_KEY") || ...</text>
+        </g>
+
+        <!-- BRANCH A: REAL LLM -->
+        <g>
+          <rect class="node-box info" x="370" y="260" width="220" height="200" rx="10"/>
+          <text class="node-st" x="386" y="280" style="fill:#818cf8">_call_real_llm()</text>
+          <text class="node-t"  x="386" y="302" style="font-size:14px">Kimi-K2.6 · OpenAI-compat</text>
+
+          <rect class="chip active" x="386" y="316" width="200" height="22" rx="4"/>
+          <text class="chip-t" x="486" y="331" text-anchor="middle" style="fill:#5eead4">model: kimi-k2.6</text>
+
+          <rect class="chip" x="386" y="344" width="200" height="22" rx="4"/>
+          <text class="chip-t" x="486" y="359" text-anchor="middle">base: api.moonshot.ai/v1</text>
+
+          <rect class="chip" x="386" y="372" width="200" height="22" rx="4"/>
+          <text class="chip-t" x="486" y="387" text-anchor="middle">temperature: 1 (model-required)</text>
+
+          <text class="node-p" x="386" y="412" style="font-size:10px">client.chat.completions.create(...)</text>
+          <text class="node-p" x="386" y="428" style="font-size:10px">strip ``` fences · json.loads</text>
+          <text class="node-p" x="386" y="444" style="font-size:10px">accept {predictions: [...]} OR [...]</text>
+        </g>
+
+        <!-- BRANCH B: HEURISTIC -->
+        <g>
+          <rect class="node-box ok" x="620" y="260" width="220" height="200" rx="10"/>
+          <text class="node-st" x="636" y="280" style="fill:#5eead4">_heuristic_triage()</text>
+          <text class="node-t"  x="636" y="302" style="font-size:14px">Deterministic fallback</text>
+
+          <rect class="chip" x="636" y="316" width="95" height="22" rx="4"/>
+          <text class="chip-t" x="683" y="331" text-anchor="middle">"charge" · "refund"</text>
+          <rect class="chip" x="735" y="316" width="105" height="22" rx="4"/>
+          <text class="chip-t" x="787" y="331" text-anchor="middle">"login" · "password"</text>
+
+          <rect class="chip" x="636" y="344" width="95" height="22" rx="4"/>
+          <text class="chip-t" x="683" y="359" text-anchor="middle">"crash" · "bug"</text>
+          <rect class="chip" x="735" y="344" width="105" height="22" rx="4"/>
+          <text class="chip-t" x="787" y="359" text-anchor="middle">"how do i" · "export"</text>
+
+          <rect class="chip warn" x="636" y="372" width="204" height="22" rx="4"/>
+          <text class="chip-t" x="738" y="387" text-anchor="middle" style="fill:#fbbf24">else → "other" (esc. trigger)</text>
+
+          <text class="node-p" x="636" y="412" style="font-size:10px">priority from category +</text>
+          <text class="node-p" x="636" y="426" style="font-size:10px">"urgent" / "market open" keyword</text>
+          <text class="node-p" x="636" y="444" style="font-size:10px">template reply · clipped to max_words</text>
+        </g>
+
+        <!-- Recover / fallback note -->
+        <g>
+          <rect class="node-box muted" x="370" y="490" width="470" height="70" rx="10"/>
+          <text class="node-st" x="386" y="510">try / except wrapper</text>
+          <text class="node-mono" x="386" y="530" style="font-size:11px">except Exception as exc:</text>
+          <text class="node-p"  x="386" y="546" style="font-size:11px">print warning, set _llm_mode="simulated", call _heuristic_triage()</text>
+        </g>
+
+        <!-- ─── RIGHT: post-processing ─── -->
+        <g>
+          <rect class="node-box warn" x="890" y="60" width="310" height="120" rx="10"/>
+          <text class="node-st" x="906" y="80" style="fill:#fbbf24">_enforce_config()</text>
+          <text class="node-t"  x="906" y="102" style="font-size:14px">defensive rewriting</text>
+          <text class="node-p"  x="906" y="120">category not in allowed → "other"</text>
+          <text class="node-p"  x="906" y="136">priority not in allowed → "normal"</text>
+          <text class="node-p"  x="906" y="152" style="font-weight:700">route_to ALWAYS = routing_rules[category]</text>
+          <text class="node-p"  x="906" y="168">confidence cast to float (default 0.5)</text>
+        </g>
+
+        <g>
+          <rect class="node-box" x="890" y="200" width="310" height="100" rx="10"/>
+          <text class="node-st"   x="906" y="220">writes</text>
+          <text class="node-mono" x="906" y="240">triage_predictions.json</text>
+          <text class="node-p"    x="906" y="260" style="font-size:11px">7 keys per ticket, 4 records,</text>
+          <text class="node-p"    x="906" y="276" style="font-size:11px">order matches normalized_tickets</text>
+          <text class="node-p"    x="906" y="292" style="font-size:11px">indent=2, ensure_ascii=False</text>
+        </g>
+
+        <g>
+          <rect class="node-box pink" x="890" y="320" width="310" height="110" rx="10"/>
+          <text class="node-st" x="906" y="340" style="fill:#f472b6">_compute_escalations()</text>
+          <text class="node-t"  x="906" y="362" style="font-size:13px">deterministic post-filter</text>
+          <text class="node-p"  x="906" y="380" style="font-size:11px">category == "other" → escalate</text>
+          <text class="node-p"  x="906" y="396" style="font-size:11px">confidence &lt; 0.60 → escalate</text>
+          <text class="node-mono" x="906" y="418" style="font-size:10.5px;fill:#f472b6">→ escalations.json</text>
+        </g>
+
+        <g>
+          <rect class="node-box info" x="890" y="450" width="310" height="120" rx="10"/>
+          <text class="node-st" x="906" y="470" style="fill:#818cf8">_log_llm_call()</text>
+          <text class="node-t"  x="906" y="492" style="font-size:13px">append-only audit log</text>
+          <text class="node-mono" x="906" y="510" style="font-size:10px">{mode: real|simulated,</text>
+          <text class="node-mono" x="906" y="524" style="font-size:10px"> provider, model, prompt_hash,</text>
+          <text class="node-mono" x="906" y="538" style="font-size:10px"> prompt_chars, n_inputs, n_outputs}</text>
+          <text class="node-mono" x="906" y="558" style="font-size:10.5px;fill:#818cf8">→ llm_calls.jsonl</text>
+        </g>
+
+        <!-- ARROWS LEFT → CENTER -->
+        <path class="flow-line ok" d="M310 325 L 480 175" marker-end="url(#L-a-ok)" stroke-width="2"/>
+        <text class="node-mono" x="370" y="245" style="font-size:10px;fill:#5eead4">prompt</text>
+
+        <!-- Decision down to two branches -->
+        <path class="flow-line info" d="M540 200 L 480 260" marker-end="url(#L-a-info)" stroke-width="2"/>
+        <text class="node-mono" x="430" y="240" style="font-size:10px;fill:#818cf8">YES</text>
+
+        <path class="flow-line ok dashed" d="M660 200 L 730 260" marker-end="url(#L-a-ok)" stroke-width="2"/>
+        <text class="node-mono" x="700" y="240" style="font-size:10px;fill:#5eead4">NO / fail</text>
+
+        <!-- branches → enforce_config -->
+        <path class="flow-line info" d="M590 320 Q 750 320 870 120" marker-end="url(#L-a-info)" stroke-width="2"/>
+        <path class="flow-line ok"   d="M840 320 Q 870 320 890 130" marker-end="url(#L-a-ok)" stroke-width="2"/>
+
+        <!-- enforce → predictions -->
+        <path class="flow-line warn" d="M1045 180 L 1045 200" marker-end="url(#L-a-warn)" stroke-width="2"/>
+        <!-- predictions → escalations -->
+        <path class="flow-line" d="M1045 300 L 1045 320" marker-end="url(#L-a)" stroke-width="1.5"/>
+        <!-- predictions → log -->
+        <path class="flow-line info dashed" d="M1180 280 Q 1220 350 1180 450" marker-end="url(#L-a-info)" stroke-width="1.5"/>
+      </svg>
+
+      <div class="diagram-legend">
+        <div class="lg"><span class="sw" style="background:rgba(94,234,212,0.12);border-color:#5eead4"></span>Deterministic path (prompt + heuristic)</div>
+        <div class="lg"><span class="sw" style="background:rgba(129,140,248,0.14);border-color:#818cf8"></span>Real Kimi-K2.6 inference</div>
+        <div class="lg"><span class="sw" style="background:rgba(251,191,36,0.14);border-color:#fbbf24"></span>Config-enforcement / decision</div>
+        <div class="lg"><span class="sw" style="background:rgba(244,114,182,0.14);border-color:#f472b6"></span>Escalation rules</div>
+        <div class="lg" style="margin-left:auto"><span style="display:inline-block;width:20px;border-top:1.5px dashed #64748b;vertical-align:middle;margin-right:4px"></span>Fallback / exception path</div>
+      </div>
+    </div>
+
+    <!-- Code snippet: the actual call -->
+    <div class="card-grid-2" style="margin-top:24px">
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico-badge"><i data-lucide="code"></i></div>
+          <div><div class="t">Real LLM call site</div><div class="card-h">_call_real_llm()</div></div>
+        </div>
+<pre class="code">client = OpenAI(
+    api_key=LLM_API_KEY,
+    base_url=LLM_BASE_URL,         # https://api.moonshot.ai/v1
+)
+resp = client.chat.completions.create(
+    model=LLM_MODEL,               # kimi-k2.6
+    temperature=temperature,       # =1 (required by k2.6)
+    messages=[
+      {"role":"system",
+       "content":"You output ONLY valid JSON. ..."},
+      {"role":"user",  "content": prompt},
+    ],
+)
+raw = resp.choices[0].message.content.strip()
+# strip ``` fences if any, json.loads, unwrap
+# {predictions:[...]} → [...]</pre>
+      </div>
+      <div class="card">
+        <div class="card-ih">
+          <div class="ico-badge"><i data-lucide="shield"></i></div>
+          <div><div class="t">Defensive rewrite</div><div class="card-h">_enforce_config()</div></div>
+        </div>
+<pre class="code">cleaned = []
+for r in raw:
+    cat = r["category"]  if r.get("category") in cats else "other"
+    pri = r["priority"]  if r.get("priority") in pris else "normal"
+    cleaned.append({
+        "ticket_id":       r["ticket_id"],
+        "category":        cat,
+        "priority":        pri,
+        "confidence":      float(r.get("confidence", 0.5)),
+        "reason":          r.get("reason", ""),
+        "suggested_reply": r.get("suggested_reply", ""),
+        "route_to":        routing[cat],   # NEVER from LLM
+    })
+return cleaned</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 04 · DATA / ARTIFACT GRAPH
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="data">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="database"></i></span><span class="tick"></span>04 &nbsp;/&nbsp; Data &amp; Artifact Graph</div>
+      <h2 class="sec-heading">Which method writes which file, and which method reads it back.</h2>
+      <p class="sec-sub">
+        The pipeline writes 9 files. Each box below is a real file in the working directory.
+        Solid arrows are <i>writes</i> from a method. Dashed arrows are <i>reads</i> by a
+        downstream method or by <code class="k">validate.py</code>.
+      </p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 1240 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data and artifact graph">
+        <defs>
+          <marker id="D-a"      markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+          <marker id="D-a-ok"   markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/></marker>
+          <marker id="D-a-info" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#818cf8"/></marker>
+          <marker id="D-a-pink" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#f472b6"/></marker>
+        </defs>
+
+        <rect class="phase-band" x="20"  y="40"  width="300" height="500" rx="12" ry="12"/>
+        <rect class="phase-band" x="340" y="40"  width="560" height="500" rx="12" ry="12"/>
+        <rect class="phase-band" x="920" y="40"  width="300" height="500" rx="12" ry="12"/>
+
+        <text class="phase-label" x="170"  y="32" text-anchor="middle">Methods (writers)</text>
+        <text class="phase-label" x="620"  y="32" text-anchor="middle">Files on disk</text>
+        <text class="phase-label" x="1070" y="32" text-anchor="middle">Readers</text>
+
+        <!-- LEFT: writers -->
+        <g><rect class="node-box ok"   x="40"  y="70"  width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="90" style="fill:#5eead4">stage 03</text>
+          <text class="node-mono" x="56" y="110">normalize_tickets()</text></g>
+
+        <g><rect class="node-box info" x="40"  y="140" width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="160" style="fill:#818cf8">stage 04</text>
+          <text class="node-mono" x="56" y="180">predict_triage()</text></g>
+
+        <g><rect class="node-box info" x="40"  y="210" width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="230" style="fill:#818cf8">stage 04 sub</text>
+          <text class="node-mono" x="56" y="250">_compute_escalations()</text></g>
+
+        <g><rect class="node-box info" x="40"  y="280" width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="300" style="fill:#818cf8">stage 04 sub</text>
+          <text class="node-mono" x="56" y="320">_log_llm_call()</text></g>
+
+        <g><rect class="node-box warn" x="40"  y="350" width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="370" style="fill:#fbbf24">stage 05</text>
+          <text class="node-mono" x="56" y="390">human_review()</text></g>
+
+        <g><rect class="node-box pink" x="40"  y="420" width="260" height="56" rx="10"/>
+          <text class="node-st" x="56" y="440" style="fill:#f472b6">stage 06</text>
+          <text class="node-mono" x="56" y="460">generate_final_queue()</text></g>
+
+        <g><rect class="node-box pink" x="40"  y="490" width="260" height="46" rx="10"/>
+          <text class="node-st" x="56" y="508" style="fill:#f472b6">stage 06 sub</text>
+          <text class="node-mono" x="56" y="526">_write_summary()</text></g>
+
+        <!-- CENTER: files -->
+        <g><rect class="node-box muted" x="360" y="60"  width="220" height="50" rx="10"/>
+          <text class="node-mono" x="376" y="82">tickets.json</text>
+          <text class="node-p"    x="376" y="100" style="font-size:10px">input (pre-existing)</text></g>
+
+        <g><rect class="node-box muted" x="600" y="60"  width="280" height="50" rx="10"/>
+          <text class="node-mono" x="616" y="82">triage_config.json</text>
+          <text class="node-p"    x="616" y="100" style="font-size:10px">input (pre-existing) · single source of truth</text></g>
+
+        <g><rect class="node-box ok"    x="360" y="130" width="220" height="50" rx="10"/>
+          <text class="node-mono" x="376" y="152">normalized_tickets.json</text>
+          <text class="node-p"    x="376" y="170" style="font-size:10px">+ text_for_model · char_count</text></g>
+
+        <g><rect class="node-box info"  x="360" y="200" width="220" height="50" rx="10"/>
+          <text class="node-mono" x="376" y="222">triage_predictions.json</text>
+          <text class="node-p"    x="376" y="240" style="font-size:10px">7-key prediction objects</text></g>
+
+        <g><rect class="node-box pink"  x="600" y="200" width="280" height="50" rx="10"/>
+          <text class="node-mono" x="616" y="222">escalations.json</text>
+          <text class="node-p"    x="616" y="240" style="font-size:10px">category=="other" OR confidence&lt;0.60</text></g>
+
+        <g><rect class="node-box info"  x="600" y="270" width="280" height="50" rx="10"/>
+          <text class="node-mono" x="616" y="292">llm_calls.jsonl</text>
+          <text class="node-p"    x="616" y="310" style="font-size:10px">append-only · one record per call</text></g>
+
+        <g><rect class="node-box warn"  x="360" y="340" width="220" height="50" rx="10"/>
+          <text class="node-mono" x="376" y="362">review_overrides.json</text>
+          <text class="node-p"    x="376" y="380" style="font-size:10px">{old_*, new_*} per ticket_id</text></g>
+
+        <g><rect class="node-box pink"  x="360" y="410" width="220" height="50" rx="10"/>
+          <text class="node-mono" x="376" y="432">final_queue.json</text>
+          <text class="node-p"    x="376" y="450" style="font-size:10px">+ final_route_to · was_overridden</text></g>
+
+        <g><rect class="node-box pink"  x="600" y="410" width="280" height="50" rx="10"/>
+          <text class="node-mono" x="616" y="432">queue_summary.md</text>
+          <text class="node-p"    x="616" y="450" style="font-size:10px">totals · breakdowns · overridden list</text></g>
+
+        <!-- RIGHT: readers -->
+        <g><rect class="node-box" x="940" y="60"  width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="80">downstream stage</text>
+          <text class="node-mono" x="956" y="100">predict_triage()</text></g>
+
+        <g><rect class="node-box" x="940" y="140" width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="160">downstream stage</text>
+          <text class="node-mono" x="956" y="180">generate_final_queue()</text></g>
+
+        <g><rect class="node-box" x="940" y="220" width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="240">downstream stage</text>
+          <text class="node-mono" x="956" y="260">human_review()</text></g>
+
+        <g><rect class="node-box" x="940" y="300" width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="320">external tool</text>
+          <text class="node-mono" x="956" y="340">validate.py · 5 checks</text></g>
+
+        <g><rect class="node-box" x="940" y="380" width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="400">operator</text>
+          <text class="node-mono" x="956" y="420">cat / open in editor</text></g>
+
+        <g><rect class="node-box muted" x="940" y="460" width="260" height="56" rx="10"/>
+          <text class="node-st" x="956" y="480">audit</text>
+          <text class="node-mono" x="956" y="500">tail llm_calls.jsonl</text></g>
+
+        <!-- WRITES (solid) -->
+        <path class="flow-line ok"   d="M300 98  L 360 155" marker-end="url(#D-a-ok)"   stroke-width="2"/>
+        <path class="flow-line info" d="M300 168 L 360 225" marker-end="url(#D-a-info)" stroke-width="2"/>
+        <path class="flow-line pink" d="M300 238 L 600 225" marker-end="url(#D-a-pink)" stroke-width="2"/>
+        <path class="flow-line info" d="M300 308 L 600 295" marker-end="url(#D-a-info)" stroke-width="2"/>
+        <path class="flow-line warn" d="M300 378 L 360 365" marker-end="url(#D-a-warn)" stroke-width="2"/>
+        <path class="flow-line pink" d="M300 448 L 360 435" marker-end="url(#D-a-pink)" stroke-width="2"/>
+        <path class="flow-line pink" d="M300 513 L 600 435" marker-end="url(#D-a-pink)" stroke-width="2"/>
+
+        <!-- READS (dashed) -->
+        <path class="flow-line ok dashed"   d="M580 90  L 940 90"  marker-end="url(#D-a-ok)"   stroke-width="1.5"/>
+        <path class="flow-line ok dashed"   d="M580 155 L 940 90"  marker-end="url(#D-a-ok)"   stroke-width="1.2"/>
+        <path class="flow-line info dashed" d="M580 225 L 940 165" marker-end="url(#D-a-info)" stroke-width="1.5"/>
+        <path class="flow-line info dashed" d="M580 225 L 940 245" marker-end="url(#D-a-info)" stroke-width="1.2"/>
+        <path class="flow-line warn dashed" d="M580 365 L 940 165" marker-end="url(#D-a-warn)" stroke-width="1.5"/>
+
+        <!-- validate.py reads everything (dashed feathered lines) -->
+        <path class="flow-line dashed" d="M580 155 Q 800 340 940 320" marker-end="url(#D-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M580 225 Q 800 320 940 325" marker-end="url(#D-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M580 365 Q 800 340 940 330" marker-end="url(#D-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M580 435 Q 800 360 940 335" marker-end="url(#D-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M880 435 Q 900 380 940 340" marker-end="url(#D-a)" stroke-width="1"/>
+
+        <!-- final queue → operator -->
+        <path class="flow-line pink dashed" d="M580 435 L 940 410" marker-end="url(#D-a-pink)" stroke-width="1.2"/>
+        <path class="flow-line pink dashed" d="M880 435 L 940 415" marker-end="url(#D-a-pink)" stroke-width="1.2"/>
+
+        <!-- llm log → audit -->
+        <path class="flow-line info dashed" d="M880 295 L 940 488" marker-end="url(#D-a-info)" stroke-width="1.2"/>
+      </svg>
+
+      <div class="diagram-legend">
+        <div class="lg"><span class="sw" style="background:rgba(94,234,212,0.12);border-color:#5eead4"></span>Normalization artifact</div>
+        <div class="lg"><span class="sw" style="background:rgba(129,140,248,0.14);border-color:#818cf8"></span>LLM prediction artifact</div>
+        <div class="lg"><span class="sw" style="background:rgba(251,191,36,0.14);border-color:#fbbf24"></span>Human override artifact</div>
+        <div class="lg"><span class="sw" style="background:rgba(244,114,182,0.14);border-color:#f472b6"></span>Final queue artifact</div>
+        <div class="lg" style="margin-left:auto"><span style="display:inline-block;width:20px;border-top:1.5px dashed #64748b;vertical-align:middle;margin-right:4px"></span>Read</div>
+      </div>
+    </div>
+
+    <!-- Artifact table -->
+    <div class="table-wrap" style="margin-top:24px">
+      <table class="t">
+        <thead>
+          <tr>
+            <th style="width:28%">File</th>
+            <th style="width:22%">Written by</th>
+            <th>Shape / payload</th>
+            <th style="width:14%;text-align:right">Read by</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">tickets.json</td><td class="dim">(pre-existing)</td><td>Array of 4 ticket objects (ticket_id, subject, message, channel, created_at)</td><td class="num">load_inputs</td></tr>
+          <tr><td class="mono">triage_config.json</td><td class="dim">(pre-existing)</td><td>allowed_categories, allowed_priorities, reply_style.max_words, routing_rules</td><td class="num">load_inputs · enforce · final</td></tr>
+          <tr><td class="mono">normalized_tickets.json</td><td>normalize_tickets()</td><td>Original tickets + <code class="k">text_for_model</code> + <code class="k">char_count</code></td><td class="num">predict_triage</td></tr>
+          <tr><td class="mono">triage_predictions.json</td><td>predict_triage()</td><td>7 keys per ticket; <code class="k">route_to</code> rederived in <code class="k">_enforce_config</code></td><td class="num">human_review · final_queue · validator</td></tr>
+          <tr><td class="mono">escalations.json</td><td>_compute_escalations()</td><td>Subset where category=="other" OR confidence&lt;0.60</td><td class="num">operator</td></tr>
+          <tr><td class="mono">llm_calls.jsonl</td><td>_log_llm_call()</td><td>One JSONL record per run: mode, provider, model, prompt_hash, prompt_chars, n_in/out</td><td class="num">audit / tail</td></tr>
+          <tr><td class="mono">review_overrides.json</td><td>human_review()</td><td>List of {ticket_id, old_category, new_category, old_priority, new_priority}</td><td class="num">final_queue · validator</td></tr>
+          <tr><td class="mono">final_queue.json</td><td>generate_final_queue()</td><td>6 keys: ticket_id, final_category, final_priority, final_route_to, suggested_reply, was_overridden</td><td class="num">operator · validator</td></tr>
+          <tr><td class="mono">queue_summary.md</td><td>_write_summary()</td><td>Markdown: total, category breakdown, priority breakdown, queue distribution, overridden list</td><td class="num">operator</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 05 · VALIDATOR
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="validator">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="shield-check"></i></span><span class="tick"></span>05 &nbsp;/&nbsp; Validator architecture</div>
+      <h2 class="sec-heading"><code class="k" style="font-size:34px">validate.py</code> · five independent checks, one verdict.</h2>
+      <p class="sec-sub">
+        The validator never re-runs the pipeline. It only inspects artifacts on disk and
+        compares them against <code class="k">triage_config.json</code>. Each check is independent —
+        if any check fails, the run ends with <code class="k">VALIDATION FAILED</code>; otherwise
+        it prints <code class="k">✅ VALIDATION PASSED</code>.
+      </p>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 1240 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Validator architecture">
+        <defs>
+          <marker id="V-a"     markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+          <marker id="V-a-ok"  markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5eead4"/></marker>
+          <marker id="V-a-bad" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#fb7185"/></marker>
+        </defs>
+
+        <rect class="phase-band" x="20"  y="40" width="280" height="320" rx="12" ry="12"/>
+        <rect class="phase-band" x="320" y="40" width="600" height="320" rx="12" ry="12"/>
+        <rect class="phase-band" x="940" y="40" width="280" height="320" rx="12" ry="12"/>
+
+        <text class="phase-label" x="160"  y="32" text-anchor="middle">Inputs (read-only)</text>
+        <text class="phase-label" x="620"  y="32" text-anchor="middle">Five validation checks</text>
+        <text class="phase-label" x="1080" y="32" text-anchor="middle">Verdict</text>
+
+        <!-- inputs -->
+        <g><rect class="node-box muted" x="40" y="70"  width="240" height="40" rx="8"/>
+          <text class="node-mono" x="54" y="95">tickets.json</text></g>
+        <g><rect class="node-box muted" x="40" y="120" width="240" height="40" rx="8"/>
+          <text class="node-mono" x="54" y="145">triage_config.json</text></g>
+        <g><rect class="node-box muted" x="40" y="170" width="240" height="40" rx="8"/>
+          <text class="node-mono" x="54" y="195">normalized_tickets.json</text></g>
+        <g><rect class="node-box muted" x="40" y="220" width="240" height="40" rx="8"/>
+          <text class="node-mono" x="54" y="245">triage_predictions.json</text></g>
+        <g><rect class="node-box muted" x="40" y="270" width="240" height="40" rx="8"/>
+          <text class="node-mono" x="54" y="295">review_overrides.json</text></g>
+        <g><rect class="node-box muted" x="40" y="320" width="240" height="35" rx="8"/>
+          <text class="node-mono" x="54" y="343">final_queue.json + summary.md</text></g>
+
+        <!-- 5 checks -->
+        <g><rect class="node-box ok"   x="340" y="70"  width="280" height="50" rx="10"/>
+          <text class="node-st" x="356" y="90" style="fill:#5eead4">check 1</text>
+          <text class="node-t"  x="356" y="110" style="font-size:13px">Files exist + parse as JSON</text></g>
+        <g><rect class="node-box ok"   x="640" y="70"  width="280" height="50" rx="10"/>
+          <text class="node-st" x="656" y="90" style="fill:#5eead4">check 2</text>
+          <text class="node-t"  x="656" y="110" style="font-size:13px">Normalization is deterministic</text></g>
+        <g><rect class="node-box ok"   x="340" y="140" width="280" height="50" rx="10"/>
+          <text class="node-st" x="356" y="160" style="fill:#5eead4">check 3</text>
+          <text class="node-t"  x="356" y="180" style="font-size:13px">Predictions respect config</text></g>
+        <g><rect class="node-box ok"   x="640" y="140" width="280" height="50" rx="10"/>
+          <text class="node-st" x="656" y="160" style="fill:#5eead4">check 4</text>
+          <text class="node-t"  x="656" y="180" style="font-size:13px">Overrides reference predictions</text></g>
+        <g><rect class="node-box ok"   x="340" y="210" width="580" height="50" rx="10"/>
+          <text class="node-st" x="356" y="230" style="fill:#5eead4">check 5</text>
+          <text class="node-t"  x="356" y="250" style="font-size:13px">Final queue applies overrides AND rederives route_to from config</text></g>
+
+        <!-- inner-detail rows -->
+        <g><rect class="node-box muted" x="340" y="280" width="280" height="70" rx="10"/>
+          <text class="node-st" x="356" y="300">enforced rules</text>
+          <text class="node-p"  x="356" y="318" style="font-size:11px">category ∈ allowed_categories</text>
+          <text class="node-p"  x="356" y="334" style="font-size:11px">priority ∈ allowed_priorities</text></g>
+
+        <g><rect class="node-box muted" x="640" y="280" width="280" height="70" rx="10"/>
+          <text class="node-st" x="656" y="300">enforced rules</text>
+          <text class="node-p"  x="656" y="318" style="font-size:11px">route_to == routing_rules[category]</text>
+          <text class="node-p"  x="656" y="334" style="font-size:11px">word_count(reply) ≤ reply_style.max_words</text></g>
+
+        <!-- verdict -->
+        <g><rect class="node-box ok" x="960" y="70" width="240" height="100" rx="10"/>
+          <text class="node-st" x="976" y="92" style="fill:#5eead4">success</text>
+          <text class="node-t"  x="976" y="118" style="font-size:18px">✅ VALIDATION PASSED</text>
+          <text class="node-p"  x="976" y="140" style="font-size:11px">exit 0 · ready for handoff</text></g>
+
+        <g><rect class="node-box" x="960" y="200" width="240" height="160" rx="10" style="stroke:#fb7185;fill:rgba(251,113,133,0.10)"/>
+          <text class="node-st" x="976" y="222" style="fill:#fb7185">failure</text>
+          <text class="node-t"  x="976" y="246" style="font-size:13px">VALIDATION FAILED</text>
+          <text class="node-p"  x="976" y="266" style="font-size:11px">exit 1 · prints each error</text>
+          <text class="node-p"  x="976" y="288" style="font-size:10.5px">• missing file</text>
+          <text class="node-p"  x="976" y="304" style="font-size:10.5px">• invalid category/priority</text>
+          <text class="node-p"  x="976" y="320" style="font-size:10.5px">• route_to drift</text>
+          <text class="node-p"  x="976" y="336" style="font-size:10.5px">• override mismatch</text>
+          <text class="node-p"  x="976" y="352" style="font-size:10.5px">• word-count overflow</text></g>
+
+        <!-- arrows: inputs → checks (just a few representative ones) -->
+        <path class="flow-line dashed" d="M280 90  L 340 95"  marker-end="url(#V-a)" stroke-width="1.2"/>
+        <path class="flow-line dashed" d="M280 140 L 340 165" marker-end="url(#V-a)" stroke-width="1.2"/>
+        <path class="flow-line dashed" d="M280 195 L 340 95"  marker-end="url(#V-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M280 240 L 340 165" marker-end="url(#V-a)" stroke-width="1.2"/>
+        <path class="flow-line dashed" d="M280 290 L 640 165" marker-end="url(#V-a)" stroke-width="1"/>
+        <path class="flow-line dashed" d="M280 340 L 340 235" marker-end="url(#V-a)" stroke-width="1.2"/>
+
+        <!-- checks → verdict -->
+        <path class="flow-line ok" d="M920 95  L 960 110" marker-end="url(#V-a-ok)" stroke-width="2"/>
+        <path class="flow-line ok" d="M920 165 L 960 120" marker-end="url(#V-a-ok)" stroke-width="1.5"/>
+        <path class="flow-line ok" d="M920 235 L 960 130" marker-end="url(#V-a-ok)" stroke-width="1.5"/>
+        <!-- failure branch -->
+        <path class="flow-line dashed" d="M920 235 L 960 250" marker-end="url(#V-a-bad)" stroke-width="1.5" style="stroke:#fb7185"/>
+        <text class="node-mono" x="922" y="275" style="font-size:10px;fill:#fb7185">any check fails →</text>
+      </svg>
+    </div>
+
+    <div class="card-grid-2" style="margin-top:24px">
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="list-checks"></i></div><div><div class="t">Live run output</div><div class="card-h">$ python validate.py</div></div></div>
+<pre class="code">============================================================
+VALIDATING SUPPORT TRIAGE PIPELINE
+============================================================
+[1/5] Checking required files exist and parse...
+  ok: valid JSON: tickets.json
+  ok: valid JSON: triage_config.json
+  ok: valid JSON: normalized_tickets.json
+  ok: valid JSON: triage_predictions.json
+  ok: valid JSON: review_overrides.json
+  ok: valid JSON: final_queue.json
+  ok: present:   queue_summary.md
+[2/5] Checking deterministic normalization...
+  ok: normalization deterministic for all tickets
+[3/5] Checking predictions against config...
+  ok: all predictions valid
+[4/5] Checking overrides...
+  ok: 1 override(s) validated
+[5/5] Checking final queue...
+  ok: final queue consistent with predictions and overrides
+
+✅ VALIDATION PASSED</pre>
+      </div>
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="file-code"></i></div><div><div class="t">Sample llm_calls.jsonl record</div><div class="card-h">real Kimi-K2.6 trace</div></div></div>
+<pre class="code">{
+  "timestamp":    "2026-05-22T12:53:11Z",
+  "stage":        "TRIAGE_PREDICTED",
+  "mode":         "real",
+  "provider":     "moonshot",
+  "model":        "kimi-k2.6",
+  "prompt_hash":  "b5aac09e7c1f8ee3",
+  "prompt_chars": 3175,
+  "n_inputs":     4,
+  "n_outputs":    4
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 06 · HOW TO RUN
+       ════════════════════════════════════════════════════════════════ -->
+  <section class="section" id="run">
+    <div class="sec-head">
+      <div class="sec-label"><span class="ico"><i data-lucide="terminal"></i></span><span class="tick"></span>06 &nbsp;/&nbsp; Verify it yourself</div>
+      <h2 class="sec-heading">Copy-paste these into PowerShell.</h2>
+      <p class="sec-sub">
+        The pipeline runs on Python 3.13 with only standard library. The <code class="k">openai</code>
+        and <code class="k">python-dotenv</code> packages are <i>optional</i> — they are only used when the
+        real Kimi call is desired. The <code class="k">.env</code> file in this folder already holds
+        <code class="k">KIMI_API_KEY</code> and <code class="k">LLM_MODEL=kimi-k2.6</code>.
+      </p>
+    </div>
+
+    <div class="card-grid-2">
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="package"></i></div><div><div class="t">Setup (one time)</div><div class="card-h">Install optional deps</div></div></div>
+<pre class="code"># PowerShell, from the project root:
+pip install -r requirements.txt</pre>
+        <p class="card-p" style="margin-top:12px">
+          Installs <code class="k">openai&gt;=1.0</code> and
+          <code class="k">python-dotenv&gt;=1.0</code>. Skip this if you just want
+          the deterministic heuristic path — the pipeline still runs.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="play"></i></div><div><div class="t">Run the full pipeline</div><div class="card-h">interactive mode</div></div></div>
+<pre class="code">python triage_pipeline.py
+# at the override prompt, type either:
+#   (Enter)                    → no overrides
+#   T-1003,bug_report,high     → override one ticket
+#   (Enter)                    → finish</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="forward"></i></div><div><div class="t">Run non-interactive</div><div class="card-h">pipe overrides via stdin</div></div></div>
+<pre class="code"># PowerShell — pipes one override + empty line:
+"T-1003,bug_report,high`n`n" | python triage_pipeline.py
+
+# Bash equivalent:
+printf 'T-1003,bug_report,high\n\n' | python triage_pipeline.py</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-ih"><div class="ico-badge"><i data-lucide="check-check"></i></div><div><div class="t">Verify everything</div><div class="card-h">expect ✅ VALIDATION PASSED</div></div></div>
+<pre class="code">python validate.py
+# exit code 0 = pass · 1 = fail
+# tail the audit log:
+Get-Content llm_calls.jsonl -Tail 1
+# inspect the result:
+Get-Content final_queue.json</pre>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:24px">
+      <table class="t">
+        <thead><tr><th style="width:36%">Command</th><th>Expected effect</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">python triage_pipeline.py</td><td>Runs all 7 stages, prompts for overrides, writes 9 artifacts.</td></tr>
+          <tr><td class="mono">python validate.py</td><td>Reads every artifact, prints <code class="k">✅ VALIDATION PASSED</code> on success.</td></tr>
+          <tr><td class="mono">Get-Content llm_calls.jsonl</td><td>Audit log: shows <code class="k">"mode":"real"</code> &amp; <code class="k">"model":"kimi-k2.6"</code> when the API call succeeded.</td></tr>
+          <tr><td class="mono">Get-Content final_queue.json</td><td>The final routing decisions. Overridden tickets have <code class="k">was_overridden:true</code> and a new <code class="k">final_route_to</code>.</td></tr>
+          <tr><td class="mono">Get-Content queue_summary.md</td><td>Human-readable totals + per-queue distribution.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div>Support Triage Pipeline · architecture report</div>
+    <div>triage_pipeline.py · validate.py · kimi-k2.6 · stdlib + optional openai</div>
+  </footer>
+
+<script>
+  // ─── Theme toggle: apply saved preference, then wire button ───
+  (function(){
+    try {
+      const saved = localStorage.getItem('triage-theme');
+      if (saved === 'light') document.body.classList.add('light-theme');
+    } catch (e) { /* localStorage disabled — no-op */ }
+  })();
+
+  // initialize lucide icons
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  const themeBtn = document.getElementById('themeToggle');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const isLight = document.body.classList.toggle('light-theme');
+      try { localStorage.setItem('triage-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+    });
+  }
+</script>
+</body>
+</html>
