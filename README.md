@@ -1,25 +1,71 @@
 # Support Triage Pipeline
 
-A replayable support-triage pipeline that reads customer support tickets from disk, classifies each ticket into a controlled label set, detects urgency, drafts suggested replies, supports human review checkpoints for corrections, and produces a final queue summary for agents.
+A replayable support-triage pipeline that reads customer support tickets from disk, classifies each ticket into a controlled label set, detects urgency, drafts suggested replies, supports human-review checkpoints for corrections, and produces a final queue summary for agents.
+
+![Pipeline output preview](report/output.png)
+
+---
+
+## For evaluators / recruiters — run the whole thing in 10 seconds
+
+**You do not need an API key, a `.env` file, or any third-party packages.** The pipeline ships with a deterministic offline fallback that runs purely on the Python standard library and still produces validation-passing outputs.
+
+```bash
+# 1. Run the pipeline (no overrides — just skip the prompt with an empty line)
+echo. | python triage_pipeline.py     # Windows PowerShell / cmd
+echo "" | python triage_pipeline.py   # macOS / Linux / bash
+
+# 2. Validate every artifact against the config
+python validate.py
+# expect:  ✅ VALIDATION PASSED
+```
+
+**To also exercise the human-override path** (optional, demonstrates the override mechanism):
+
+```bash
+# Windows PowerShell
+"T-1003,bug_report,high`n`n" | python triage_pipeline.py
+
+# macOS / Linux / bash
+printf 'T-1003,bug_report,high\n\n' | python triage_pipeline.py
+
+python validate.py
+# T-1003 will appear in final_queue.json with was_overridden: true
+```
+
+**To run the real LLM path** (optional — uses Moonshot Kimi-K2.6):
+
+```bash
+pip install -r requirements.txt
+# Put a real KIMI_API_KEY in .env (template lives in .env.example)
+python triage_pipeline.py
+```
+
+Without a key, the run will silently use the offline heuristic — no warnings, no crashes, validation still passes. The audit log `llm_calls.jsonl` records `"mode":"simulated"` vs `"mode":"real"` so you can verify which path was used.
+
+---
 
 ## Report
 
-- [Interactive HTML report](report/triage.html)
-- [Support triage pipeline report](report/Support_Triage_Pipeline_Report.pdf)
+- [Live demo](https://media.addedability.com/)
+- [Interactive HTML report](report/triage.html) — deep architecture diagrams
+- [PDF report](report/Support_Triage_Pipeline_Report.pdf)
 
 ## Features
 
-- ✅ Deterministic ticket normalization before LLM processing
-- ✅ Structured LLM-based ticket classification and reply generation
-- ✅ Interactive human review checkpoint with override capability
+- ✅ Deterministic ticket normalization before any LLM call
+- ✅ One-shot LLM classification with structured JSON output
+- ✅ Interactive human-review checkpoint with config-validated overrides
+- ✅ Real Kimi-K2.6 (OpenAI-compatible) integration **with safe offline fallback**
 - ✅ Confidence-based escalation rules
-- ✅ Comprehensive validation script
-- ✅ Full audit trail with LLM call logging
-- ✅ Reproducible outputs from clean checkout
+- ✅ Stand-alone validator script — five independent checks
+- ✅ Full audit trail (LLM call log with mode/model/prompt-hash)
+- ✅ Reproducible outputs from a clean checkout
+- ✅ Pure-stdlib by default — no required external packages
 
 ## Pipeline Stages
 
-The pipeline enforces these stages in order:
+The pipeline enforces these seven stages in order:
 
 ```
 INIT
@@ -28,90 +74,94 @@ INIT
  -> TRIAGE_PREDICTED
  -> HUMAN_REVIEW_COMPLETE
  -> FINAL_QUEUE_GENERATED
- -> VALIDATION_COMPLETE
  -> RESULTS_FINALISED
 ```
 
+Stages cannot be skipped — they are sequenced from `TriagePipeline.run()` and each one prints a banner with `===` borders.
+
 ## Requirements
 
-- Python 3.7+
-- OpenAI Python SDK
-- python-dotenv for environment variable management
-- Kimi API key (or OpenAI-compatible API)
+- **Required**: Python 3.7+ (tested on 3.13 / Windows 11 + PowerShell)
+- **Optional**: `openai>=1.0`, `python-dotenv>=1.0` — only needed to call the real LLM. Without them, the pipeline runs the deterministic offline classifier.
 
-## Quick Start
+## Full Usage Guide
 
-### 1. Install Dependencies
+### 1. (Optional) Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Or install manually:
-```bash
-pip install openai python-dotenv
-```
+Skip this if you only want to use the offline heuristic path.
 
-### 2. Configure API Key
+### 2. (Optional) Configure an API key
 
-Copy the example environment file and add your API key:
+Copy the template and add your key:
 
 ```bash
-cp .env.example .env
+cp .env.example .env       # macOS / Linux
+copy .env.example .env     # Windows
 ```
 
-Then edit `.env` and add your Kimi API key:
+Edit `.env`:
 
 ```
 KIMI_API_KEY=sk-your-key-here
-LLM_MODEL=kimi-k2
+LLM_MODEL=kimi-k2.6
 ```
 
-### 3. Run the Pipeline
+`.env` is `.gitignore`d, so your key never ends up on GitHub.
+
+### 3. Run the pipeline
 
 ```bash
 python triage_pipeline.py
 ```
 
-The pipeline will:
-1. Load environment variables from `.env` file
-2. Load input files (`tickets.json`, `triage_config.json`)
-3. Normalize tickets deterministically
-4. Call Kimi API to generate triage predictions
-5. Pause for human review (interactive)
-6. Generate final queue and summary
+You'll see:
 
-### 4. Human Review
+1. Stage banners with `===` borders
+2. A table of predictions
+3. An override prompt:
+   ```
+   Enter overrides as: ticket_id,category,priority
+   Press Enter on an empty line when done.
+   >
+   ```
+4. Final-queue summary printed and written to disk
 
-During execution, you'll see predictions and be prompted:
+### 4. Override input format
+
+At the prompt, enter zero or more lines, each in the form:
 
 ```
-Enter overrides as: ticket_id,category,priority
-Press Enter on an empty line when done.
+ticket_id,category,priority
 ```
 
-Example overrides:
+Example:
+
 ```
 T-1001,account_access,urgent
 T-1003,billing_issue,high
 ```
 
-Press Enter on empty line to continue.
+End the input with an empty line. Invalid categories/priorities (anything not in `triage_config.json`) are rejected with a warning and skipped.
 
-### 5. Validate Results
+### 5. Validate the results
 
 ```bash
 python validate.py
 ```
 
-This checks:
-- All required artifacts exist
-- JSON files are valid
-- Normalization is deterministic
-- Categories and priorities match config
-- Routing rules are correctly applied
-- Overrides are properly reflected in final output
-- Reply length respects configured limits
+Five independent checks:
+
+1. All required files exist and parse as JSON
+2. `text_for_model` and `char_count` are deterministic
+3. Every prediction respects `allowed_categories` / `allowed_priorities` / `routing_rules` / `reply_style.max_words`
+4. Overrides reference real predictions and use valid values
+5. `final_queue.json` applies overrides correctly and rederives `final_route_to` from config
+
+Prints `✅ VALIDATION PASSED` on success (exit 0); otherwise lists each failure (exit 1).
 
 ## Input Files
 
@@ -134,205 +184,166 @@ Array of customer support tickets:
 
 ### `triage_config.json`
 
-Configuration for classification and routing:
+Single source of truth for categories, priorities, routing, and reply style:
 
 ```json
 {
   "allowed_categories": [
-    "billing_issue",
-    "account_access",
-    "product_how_to",
-    "bug_report",
-    "other"
+    "billing_issue", "account_access", "product_how_to", "bug_report", "other"
   ],
-  "allowed_priorities": [
-    "urgent",
-    "high",
-    "normal",
-    "low"
-  ],
-  "reply_style": {
-    "tone": "clear, polite, concise",
-    "max_words": 80
-  },
+  "allowed_priorities": ["urgent", "high", "normal", "low"],
+  "reply_style": { "tone": "clear, polite, concise", "max_words": 80 },
   "routing_rules": {
-    "billing_issue": "payments_queue",
-    "account_access": "trust_and_access_queue",
-    "product_how_to": "general_support_queue",
-    "bug_report": "technical_queue",
-    "other": "manual_review_queue"
+    "billing_issue":   "payments_queue",
+    "account_access":  "trust_and_access_queue",
+    "product_how_to":  "general_support_queue",
+    "bug_report":      "technical_queue",
+    "other":           "manual_review_queue"
   }
 }
 ```
 
 ## Output Artifacts
 
-### Required Outputs
+### Required outputs
 
-- **`normalized_tickets.json`** - Deterministically normalized tickets with `text_for_model` field
-- **`triage_predictions.json`** - LLM predictions with category, priority, confidence, and suggested replies
-- **`review_overrides.json`** - Human review corrections (empty array if no overrides)
-- **`final_queue.json`** - Final queue with post-review values and routing
-- **`queue_summary.md`** - Human-readable summary with counts and breakdowns
+| File | Description |
+|---|---|
+| `normalized_tickets.json` | Tickets + `text_for_model` + `char_count` |
+| `triage_predictions.json` | LLM predictions (7 keys per ticket) |
+| `review_overrides.json` | Human corrections (empty array if none) |
+| `final_queue.json` | Post-review queue with `final_route_to` + `was_overridden` |
+| `queue_summary.md` | Markdown summary with totals, breakdowns, overridden list |
 
-### Optional Outputs
+### Optional outputs
 
-- **`escalations.json`** - Tickets flagged for manual escalation (low confidence or "other" category)
-- **`llm_calls.jsonl`** - Audit log of all LLM API calls with timestamps and hashes
+| File | Description |
+|---|---|
+| `escalations.json` | Tickets where `category == "other"` OR `confidence < 0.60` |
+| `llm_calls.jsonl` | Audit log: one record per call with `mode`, `model`, `prompt_hash`, etc. |
 
 ## Architecture
 
-### Stage 1: Normalization (Deterministic)
+### Stage 1 · Normalization (deterministic)
 
 ```python
 text_for_model = f"Subject: {subject}\nMessage: {message}"
 char_count = len(text_for_model)
 ```
 
-No LLM calls during normalization - purely deterministic code.
+No LLM calls — pure Python.
 
-### Stage 2: Prediction (LLM)
+### Stage 2 · Triage prediction (real LLM with offline fallback)
 
-Single LLM call processes all tickets with:
-- Full configuration context
-- Structured output format
-- Confidence scoring
-- Reply generation within word limits
+`_simulate_llm_triage(prompt)` decides which path to take:
 
-### Stage 3: Human Review (Interactive)
+- **Real path** — if `openai` is installed AND `KIMI_API_KEY` is set, `_call_real_llm()` posts the prompt to Moonshot's Kimi-K2.6 endpoint (`https://api.moonshot.ai/v1`), strips any markdown fences, parses the JSON, and returns the predictions.
+- **Fallback path** — `_heuristic_triage()` uses keyword matching (`"charge"`, `"login"`, `"crash"`, etc.) to pick a category and priority, then fills in a template reply clipped to `reply_style.max_words`.
 
-Terminal-based review interface:
-- Display all predictions
-- Accept overrides in simple format
-- Validate against allowed values
-- Record all changes
+Both paths feed into `_enforce_config()` which **always rederives `route_to` from `triage_config.json`** — the model's routing suggestion is never trusted.
 
-### Stage 4: Final Queue (Deterministic)
+### Stage 3 · Human review (interactive)
 
-- Apply overrides to predictions
-- Recompute routing based on final categories
-- Mark overridden tickets
-- Generate summary statistics
+- Prints all predictions in a table
+- Accepts overrides line-by-line
+- Validates each override against config
+- Empty line ends the input
+- Writes `review_overrides.json` (still an empty array `[]` if no overrides)
+
+### Stage 4 · Final queue (deterministic)
+
+- Apply overrides on top of predictions
+- Recompute `final_route_to = routing_rules[final_category]`
+- Mark `was_overridden: true` for any ticket that was changed
+- Write `final_queue.json` and `queue_summary.md`
 
 ## Validation Checks
 
-The validation script verifies:
-
-✅ **File Existence** - All required artifacts present  
-✅ **JSON Validity** - All JSON files parse correctly  
-✅ **Normalization** - Deterministic text construction  
-✅ **Predictions** - One per ticket, valid categories/priorities  
-✅ **Routing** - Matches configuration rules  
-✅ **Overrides** - Valid values, properly applied  
-✅ **Reply Length** - Respects max word limit  
-✅ **Completeness** - Every ticket in final queue  
+✅ **File existence** — all required artifacts present
+✅ **JSON validity** — all JSON files parse correctly
+✅ **Determinism** — `text_for_model` reconstructable from inputs
+✅ **Config compliance** — categories, priorities, routes valid
+✅ **Override integrity** — old values match predictions, new values are allowed
+✅ **Reply length** — every `suggested_reply` ≤ `reply_style.max_words`
+✅ **Final queue consistency** — overrides applied, routes rederived
 
 ## Escalation Rules
 
-Tickets are automatically flagged for escalation if:
+A ticket is flagged for escalation if **either**:
 
-1. Category is `"other"`, OR
-2. Confidence score < 0.60
+1. `category == "other"`, OR
+2. `confidence < 0.60`
 
-Escalated tickets are saved to `escalations.json` for manual review.
+Escalated tickets are written to `escalations.json`.
 
 ## Customization
 
-### Replace Input Files
+### Replace input files
 
-The pipeline reads from disk - simply replace:
-- `tickets.json` with your tickets
-- `triage_config.json` with your categories/rules
+The pipeline reads from disk — drop in a new `tickets.json` or `triage_config.json` and rerun.
 
-### Integrate Real LLM
+### Use a different LLM provider
 
-Replace the `_simulate_llm_triage()` method in `triage_pipeline.py`:
+The real call is a standard OpenAI-compatible request:
 
 ```python
-def _simulate_llm_triage(self) -> List[Dict[str, Any]]:
-    # Replace with actual OpenAI/Anthropic/etc. API call
-    import openai
-    
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": self._build_triage_prompt()}],
-        temperature=0.3
-    )
-    
-    return json.loads(response.choices[0].message.content)
+client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+resp = client.chat.completions.create(
+    model=LLM_MODEL,
+    temperature=temperature,   # =1 for kimi-k2.6
+    messages=[
+        {"role": "system", "content": "You output ONLY valid JSON. ..."},
+        {"role": "user",   "content": prompt},
+    ],
+)
 ```
 
-### Modify Categories
+Point it at any OpenAI-compatible endpoint by setting `LLM_BASE_URL` and `LLM_MODEL` in `.env`.
+
+### Modify categories
 
 Edit `triage_config.json`:
-- Add/remove categories in `allowed_categories`
-- Update `routing_rules` to map new categories to queues
+- Add/remove items in `allowed_categories`
+- Map each new category to a queue in `routing_rules`
 - Adjust `allowed_priorities` as needed
 
-## Error Handling
-
-The pipeline includes:
-
-- **Graceful degradation** - Malformed tickets go to `other` category
-- **Validation gates** - Override values checked against config
-- **Audit trail** - All LLM calls logged with timestamps
-- **Reproducibility** - Deterministic preprocessing ensures consistent results
-
-## Testing
-
-Run the complete workflow:
-
-```bash
-# Run pipeline (will prompt for review)
-python triage_pipeline.py
-
-# Validate outputs
-python validate.py
-
-# Check generated files
-ls -la *.json *.md *.jsonl
-```
-
-For automated testing (skip human review):
-
-```bash
-# Pipe empty input to skip review prompt
-echo "" | python triage_pipeline.py
-python validate.py
-```
+`validate.py` enforces these against every artifact.
 
 ## Project Structure
 
 ```
 .
-├── README.md                    # This file
-├── triage_pipeline.py          # Main pipeline script
-├── validate.py                 # Validation script
-├── tickets.json                # Input: customer tickets
-├── triage_config.json          # Input: classification config
-├── normalized_tickets.json     # Output: normalized tickets
-├── triage_predictions.json     # Output: LLM predictions
-├── review_overrides.json       # Output: human corrections
-├── final_queue.json            # Output: final routing queue
-├── queue_summary.md            # Output: human-readable summary
-├── escalations.json            # Output: flagged tickets (optional)
-└── llm_calls.jsonl             # Output: LLM audit log (optional)
+├── README.md                       # This file
+├── triage_pipeline.py              # Main pipeline (TriagePipeline class)
+├── validate.py                     # Five-check validator
+├── requirements.txt                # Optional deps: openai, python-dotenv
+├── .env.example                    # Template for KIMI_API_KEY + LLM_MODEL
+├── .gitignore                      # Excludes .env and regenerable artifacts
+├── tickets.json                    # Input: customer tickets
+├── triage_config.json              # Input: categories, priorities, routing
+├── normalized_tickets.json         # Output: normalized tickets
+├── triage_predictions.json         # Output: LLM predictions
+├── review_overrides.json           # Output: human corrections
+├── final_queue.json                # Output: final routing queue
+├── queue_summary.md                # Output: human-readable summary
+├── escalations.json                # Output: flagged tickets
+├── llm_calls.jsonl                 # Output: LLM audit log
+└── report/
+    ├── triage.html                 # Interactive architecture diagrams
+    └── Support_Triage_Pipeline_Report.pdf
 ```
 
-## Technical Constraints
+## Technical Constraints (all satisfied)
 
-✅ Reads input files from disk  
-✅ Deterministic normalization before LLM  
-✅ Categories/priorities constrained by config  
-✅ Routing derived from config rules  
-✅ Human review affects downstream outputs  
-✅ Reproducible from clean checkout  
-✅ No hardcoded sample outputs  
+✅ Reads input files from disk — no hardcoded ticket data
+✅ Deterministic normalization before any LLM call
+✅ Categories and priorities constrained by config
+✅ Routing always rederived from `routing_rules`
+✅ Human-review overrides flow into the final queue
+✅ Reproducible from a clean checkout — no network required
+✅ No hardcoded sample outputs
+✅ Pure Python standard library by default
 
 ## License
 
-This is a demonstration project for AI engineering evaluation.
-
-## Support
-
-For issues or questions about the pipeline implementation, refer to the validation output or check the generated artifacts for debugging information.
+Demonstration project for AI-engineering evaluation.
