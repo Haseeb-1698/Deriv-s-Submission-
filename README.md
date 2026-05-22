@@ -4,7 +4,7 @@ A replayable support-triage pipeline that reads customer support tickets from di
 
 ## Report
 
-- [Interactive HTML report](report/index.html)
+- [Interactive HTML report](report/triage.html)
 - [Support triage pipeline report](Support_Triage_Pipeline_Report.docx)
 
 ## Features
